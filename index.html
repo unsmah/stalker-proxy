@@ -144,7 +144,7 @@
 
 <!-- Stream Preview Modal -->
 <div id="previewModal" class="modal-overlay fixed inset-0 w-full h-full bg-slate-950/95 backdrop-blur-md z-[1000] hidden items-center justify-center p-4">
-    <div class="modal-content bg-[#0f172a] border border-slate-800 rounded-2xl p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto flex flex-col gap-5 shadow-2xl animate-fade-in">
+    <div class="modal-content bg-[#0f172a] border border-slate-800 rounded-2xl p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto flex flex-col gap-5 shadow-2xl">
         <button class="sticky-close-btn bg-red-600 text-white font-extrabold text-sm py-2 px-4 rounded-lg cursor-pointer self-start active:scale-95 transition" id="btnClosePreview">Close & Stop Stream</button>
         
         <div class="player-wrapper bg-[#020617] border border-white/10 rounded-xl p-4">
@@ -157,9 +157,10 @@
                 <a id="btnExternalVlc" href="#" target="_blank" class="bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs py-2 px-4 rounded transition active:scale-95 inline-flex items-center">Play in External Player</a>
             </div>
             
+            <!-- Explanatory UI Settings warning box -->
             <div id="mixedContentWarning" class="mt-3 text-xs text-yellow-400 font-semibold bg-yellow-500/10 border border-yellow-500/20 p-3 rounded-lg hidden">
                 <span class="block mb-2 font-bold text-sm">⚠️ Browser Security Block Warning:</span>
-                IPTV portals serve streams over insecure <strong class="text-white">HTTP</strong> connections using custom server ports. Web browsers block insecure streams on secure HTTPS websites by default.<br><br>
+                IPTV portals serve streams over insecure <strong class="text-white">HTTP</strong> connections using custom server ports. Web browsers block insecure streams on secure HTTPS pages by default.<br><br>
                 <strong class="text-white">How to fix browser playback:</strong><br>
                 1. Click the <strong class="text-white">Lock/Tune Settings icon</strong> in your browser's address bar (next to the URL).<br>
                 2. Click <strong class="text-white">Site Settings</strong>.<br>
@@ -169,30 +170,21 @@
             </div>
         </div>
 
-        <!-- TV Show Episode List Overlay -->
-        <div id="episodesWrapper" class="bg-black/50 border border-slate-800 rounded-xl p-4 hidden flex flex-col gap-3">
-            <div class="flex justify-between items-center border-b border-white/5 pb-2">
-                <h4 class="text-yellow-500 text-sm font-black uppercase">Episodes List</h4>
-                <button id="btnCloseEpisodes" class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-black py-1.5 px-3 rounded-lg active:scale-95 transition">Back to Series</button>
-            </div>
-            <div id="modalEpisodesList" class="items-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 py-2"></div>
-        </div>
-
         <h4 class="text-sky-400 text-sm font-black tracking-wide">Live Streams Available</h4>
         <div id="modalLiveList" class="items-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 py-2"></div>
 
         <h4 class="text-sky-400 text-sm font-black tracking-wide">VOD Content Available</h4>
         <div id="modalVodList" class="items-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 py-2"></div>
 
-        <h4 class="text-sky-400 text-sm font-black tracking-wide">TV Series / Shows Available</h4>
+        <h4 class="text-sky-400 text-sm font-black tracking-wide">TV Series Available</h4>
         <div id="modalSeriesList" class="items-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 py-2"></div>
     </div>
 </div>
 
 <script>
-    // Points default API engine to your target Render backend
+    // Points default API engine to your target Render deployment
     const CONFIG = {
-        WORKER: "https://stalker-proxy-cu5p.onrender.com", 
+        WORKER: "https://stalker-proxy-cu5p.onrender.com", // <--- Paste your Render URL here
         DB_URL: "https://raw.githubusercontent.com/djamekchaouadi/SERVER/main/1.txt"
     };
 
@@ -439,14 +431,9 @@
         pushLog("Fetching remote preview endpoints from source server index...", "info");
         document.getElementById('previewModal').classList.remove('hidden');
         document.getElementById('previewModal').classList.add('flex');
-        
-        // Ensure episodes wrapper is closed when modal resets
-        document.getElementById('episodesWrapper').classList.add('hidden');
-        document.getElementById('modalEpisodesList').innerHTML = '';
-
         document.getElementById('modalLiveList').innerHTML = '<span class="text-yellow-500 text-xs">Loading Channels...</span>';
         document.getElementById('modalVodList').innerHTML = '<span class="text-yellow-500 text-xs">Loading Movie Directory...</span>';
-        document.getElementById('modalSeriesList').innerHTML = '<span class="text-yellow-500 text-xs">Loading Series Directory...</span>';
+        document.getElementById('modalSeriesList').innerHTML = '<span class="text-yellow-500 text-xs">Loading TV Series...</span>';
 
         // Load Live elements
         if (payload.selections.l.length > 0) {
@@ -462,17 +449,17 @@
             document.getElementById('modalVodList').innerHTML = '<span class="text-slate-400 text-xs">No VOD categories checked.</span>';
         }
 
-        // Load TV Series elements
+        // Load Series elements
         if (payload.selections.s.length > 0) {
             fetchContent('series', payload.selections.s, payload, 'modalSeriesList');
         } else {
-            document.getElementById('modalSeriesList').innerHTML = '<span class="text-slate-400 text-xs">No Series categories checked.</span>';
+            document.getElementById('modalSeriesList').innerHTML = '<span class="text-slate-400 text-xs">No series categories checked.</span>';
         }
     });
 
     async function fetchContent(type, categories, payload, targetElementId) {
         try {
-            const res = await fetch(`${CONFIG[activeEngine]}/api/get_items`, {
+            const res = await fetch(`${CONFIG.WORKER}/api/get_items`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ server: payload.server, mac: payload.mac, type: type, selectedCats: categories })
@@ -483,83 +470,29 @@
                 let htmlContent = '';
                 result.data.forEach(item => {
                     const img = item.logo ? `<img src="${item.logo}" class="max-w-[60px] max-h-[60px] mb-2 object-contain rounded" onerror="this.style.display='none'">` : '';
-                    
-                    if (type === 'series') {
-                        // TV Series click handler load episodes instead of trying direct play
-                        htmlContent += `
-                            <div id="series-${item.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[110px] hover:border-sky-500 hover:bg-sky-500/10 hover:scale-102" onclick="loadEpisodes('${payload.server}', '${payload.mac}', '${item.id}', '${item.name.replace(/'/g, "\\'")}')">
-                                ${img}
-                                <span class="text-[11px] font-bold text-slate-300 break-words leading-tight">${item.name}</span>
-                            </div>`;
-                    } else {
-                        // Standard stream play for Live channels or VOD movies
-                        htmlContent += `
-                            <div id="stream-${item.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[110px] hover:border-sky-500 hover:bg-sky-500/10 hover:scale-102" onclick="streamPlay('${payload.server}', '${payload.mac}', '${item.id}', '${type}', '${item.name.replace(/'/g, "\\'")}', 'stream-${item.id}')">
-                                ${img}
-                                <span class="text-[11px] font-bold text-slate-300 break-words leading-tight">${item.name}</span>
-                            </div>`;
-                    }
+                    htmlContent += `
+                        <div id="stream-${item.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[110px] hover:border-sky-500 hover:bg-sky-500/10 hover:scale-102" onclick="streamPlay('${payload.server}', '${payload.mac}', '${item.id}', '${type}', '${item.name.replace(/'/g, "\\'")}', 'stream-${item.id}', '${encodeURIComponent(item.cmd || '')}')">
+                            ${img}
+                            <span class="text-[11px] font-bold text-slate-300 break-words leading-tight">${item.name}</span>
+                        </div>`;
                 });
                 document.getElementById(targetElementId).innerHTML = htmlContent;
             } else {
-                document.getElementById(targetElementId).innerHTML = '<span class="text-slate-400 text-xs">No items parsed.</span>';
+                document.getElementById(targetElementId).innerHTML = '<span class="text-slate-400 text-xs">No stream indexes parsed.</span>';
             }
         } catch (e) {
             document.getElementById(targetElementId).innerHTML = '<span class="text-slate-400 text-xs">Network fetch error compiling streams.</span>';
         }
     }
 
-    // Fetches and opens TV Show episodes inside a nested overlay
-    window.loadEpisodes = async function(server, mac, seriesId, name) {
-        pushLog(`Fetching episodes list for: ${name}...`, "info");
-        const epList = document.getElementById('modalEpisodesList');
-        const epWrapper = document.getElementById('episodesWrapper');
-        
-        epWrapper.classList.remove('hidden');
-        epList.innerHTML = '<span class="text-yellow-500 text-xs">Loading episodes...</span>';
-        epWrapper.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-        try {
-            const res = await fetch(`${CONFIG[activeEngine]}/api/get_episodes`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ server, mac, type: 'series', seriesId })
-            });
-            const result = await res.json();
-            
-            if (result.success && result.data.length > 0) {
-                let htmlContent = '';
-                result.data.forEach(ep => {
-                    const img = ep.logo ? `<img src="${ep.logo}" class="max-w-[60px] max-h-[60px] mb-2 object-contain rounded" onerror="this.style.display='none'">` : '';
-                    htmlContent += `
-                        <div id="stream-${ep.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[110px] hover:border-sky-500 hover:bg-sky-500/10 hover:scale-102" onclick="streamPlay('${server}', '${mac}', '${ep.id}', 'series', '${ep.name.replace(/'/g, "\\'")}', 'stream-${ep.id}')">
-                            ${img}
-                            <span class="text-[11px] font-bold text-slate-300 break-words leading-tight">${ep.name}</span>
-                        </div>`;
-                });
-                epList.innerHTML = htmlContent;
-            } else {
-                epList.innerHTML = '<span class="text-slate-400 text-xs">No episodes found on this show.</span>';
-            }
-        } catch (e) {
-            epList.innerHTML = '<span class="text-slate-400 text-xs">Failed to load episodes list.</span>';
-        }
-    };
-
-    // Close Episodes Wrapper Action
-    document.getElementById('btnCloseEpisodes').addEventListener('click', () => {
-        document.getElementById('episodesWrapper').classList.add('hidden');
-        document.getElementById('modalEpisodesList').innerHTML = '';
-    });
-
     // Defensive Playback Fallback Strategy Handlers
     let mpegtsPlayer = null;
     let hlsPlayer = null;
 
-    window.streamPlay = function(server, mac, streamId, type, label, cardElementId) {
+    window.streamPlay = function(server, mac, streamId, type, label, cardElementId, passedCmd = '') {
         document.getElementById('previewTitle').innerText = label;
         // Point to proxy_stream without mode=proxy to let Cloudflare safely Redirect 302
-        const proxyStream = `${CONFIG[activeEngine]}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${streamId}&type=${type}`;
+        const proxyStream = `${CONFIG[activeEngine]}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${streamId}&type=${type}&cmd=${passedCmd}`;
         const videoElement = document.getElementById('videoPlayer');
 
         // Reveal Quick Action controls & browser warning on stream click
