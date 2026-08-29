@@ -78,14 +78,20 @@ function parseStalkerList(data) {
   return [];
 }
 
-// Compiles pages while filtering Series vs standalone Movies
+// Unified Pagination Fetcher: Compiles all pages for a category concurrently
 async function getCategoryItems(server, mac, type, catId, clientIp) {
-  const stalkerType = type === 'series' ? 'vod' : type;
-  const paramKey = stalkerType === 'itv' ? 'genre' : 'category';
+  const paramKey = type === 'itv' ? 'genre' : 'category';
   let allData = [];
 
   try {
-    const firstPage = await callStalker(server, mac, stalkerType, 'get_ordered_list', { [paramKey]: catId, p: 1 }, clientIp).catch(() => null);
+    // 1. Fetch Page 1 to inspect total counts
+    let firstPage = await callStalker(server, mac, type, 'get_ordered_list', { [paramKey]: catId, p: 1 }, clientIp).catch(() => null);
+    
+    // Fallback: If 'series' type fails or is empty, try pulling via 'vod' categories
+    if (!firstPage && type === 'series') {
+      firstPage = await callStalker(server, mac, 'vod', 'get_ordered_list', { category: catId, p: 1 }, clientIp).catch(() => null);
+    }
+
     if (!firstPage) return [];
 
     const jsData = firstPage.js || {};
@@ -95,13 +101,15 @@ async function getCategoryItems(server, mac, type, catId, clientIp) {
     const totalItems = parseInt(jsData.total_items || 0, 10);
     const maxPageItems = parseInt(jsData.max_page_items || firstPageItems.length || 0, 10);
 
+    // 2. Fetch remaining pages if more exist
     if (totalItems > maxPageItems && maxPageItems > 0) {
       const totalPages = Math.ceil(totalItems / maxPageItems);
       const pagePromises = [];
 
       for (let page = 2; page <= totalPages; page++) {
+        const activeType = type === 'series' && !firstPage.js ? 'vod' : type;
         pagePromises.push(
-          callStalker(server, mac, stalkerType, 'get_ordered_list', { [paramKey]: catId, p: page }, clientIp)
+          callStalker(server, mac, activeType, 'get_ordered_list', { [paramKey]: catId, p: page }, clientIp)
             .then(res => parseStalkerList(res))
             .catch(() => [])
         );
@@ -112,23 +120,6 @@ async function getCategoryItems(server, mac, type, catId, clientIp) {
         allData = [...allData, ...pageItems];
       });
     }
-
-    // Filter Series vs Movies based on is_series flags
-    if (type === 'series') {
-      allData = allData.filter(it => 
-        it.is_series === 1 || 
-        it.is_series === '1' || 
-        it.is_series === true || 
-        it.model === 'series'
-      );
-    } else if (type === 'vod') {
-      allData = allData.filter(it => 
-        it.is_series !== 1 && 
-        it.is_series !== '1' && 
-        it.is_series !== true && 
-        it.model !== 'series'
-      );
-    }
   } catch (e) {
     console.error(`Pagination compilation error on category ${catId}:`, e.message);
   }
@@ -136,30 +127,53 @@ async function getCategoryItems(server, mac, type, catId, clientIp) {
   return allData;
 }
 
-async function resolveStreamLink(server, mac, streamId, type, clientIp, isEpisode = '0') {
+// Fetch TV Show Seasons
+async function getSeriesSeasons(server, mac, seriesId, clientIp) {
+  try {
+    const data = await callStalker(server, mac, 'vod', 'get_ordered_list', {
+      movie_id: seriesId,
+      season_id: '0',
+      episode_id: '0',
+      p: 1
+    }, clientIp);
+    return parseStalkerList(data);
+  } catch (e) {
+    return [];
+  }
+}
+
+// Fetch Season Episodes
+async function getSeasonEpisodes(server, mac, seriesId, seasonId, clientIp) {
+  try {
+    const data = await callStalker(server, mac, 'vod', 'get_ordered_list', {
+      movie_id: seriesId,
+      season_id: seasonId,
+      episode_id: '0',
+      p: 1
+    }, clientIp);
+    return parseStalkerList(data);
+  } catch (e) {
+    return [];
+  }
+}
+
+async function resolveStreamLink(server, mac, streamId, type, clientIp) {
   let resolvedUrl = '';
   
-  // Episode-specific URL resolution
-  if (isEpisode === '1' || isEpisode === 1 || type === 'episode') {
-    const resData = await callStalker(server, mac, 'vod', 'get_episode_stream', { episode_id: streamId }, clientIp).catch(() => null);
-    resolvedUrl = resData?.js?.cmd || resData?.js || '';
-  } else {
-    // Movies & ITV resolution
-    let cmd = type === 'itv' ? `ffmpeg http://localhost/ch/${streamId}` : `/media/${streamId}.mpg`;
-    let resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
-    resolvedUrl = resData?.js?.cmd || resData?.js || '';
+  let cmd = type === 'itv' ? `ffmpeg http://localhost/ch/${streamId}` : `/media/${streamId}.mpg`;
+  let resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
+  resolvedUrl = resData?.js?.cmd || resData?.js || '';
 
-    if (!resolvedUrl) {
-      cmd = type === 'itv' ? `ffmpeg ${streamId}` : `${streamId}`;
-      resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
-      resolvedUrl = resData?.js?.cmd || resData?.js || '';
-    }
+  if (!resolvedUrl) {
+    cmd = type === 'itv' ? `ffmpeg ${streamId}` : `${streamId}`;
+    resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
+    resolvedUrl = resData?.js?.cmd || resData?.js || '';
+  }
 
-    if (!resolvedUrl && type === 'vod') {
-      cmd = `/media/${streamId}.mkv`;
-      resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
-      resolvedUrl = resData?.js?.cmd || resData?.js || '';
-    }
+  if (!resolvedUrl && type === 'vod') {
+    cmd = `/media/${streamId}.mkv`;
+    resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
+    resolvedUrl = resData?.js?.cmd || resData?.js || '';
   }
 
   if (resolvedUrl) {
@@ -170,7 +184,7 @@ async function resolveStreamLink(server, mac, streamId, type, clientIp, isEpisod
 
 // --- Endpoints ---
 
-// 1. Scan Categories (With automatic Series category fallback parsing)
+// 1. Scan Categories
 app.get('/api/scan', async (req, res) => {
   const { server, mac } = req.query;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
@@ -184,19 +198,13 @@ app.get('/api/scan', async (req, res) => {
       callStalker(server, mac, 'series', 'get_categories', {}, clientIp).catch(() => null)
     ]);
 
-    const liveList = parseStalkerList(liveData).map(i => ({ id: i.id || i.category_id || "", title: i.title || i.name || "" }));
-    const rawVodList = parseStalkerList(vodData).map(i => ({ id: i.id || i.category_id || "", title: i.title || i.name || "" }));
-    let seriesList = parseStalkerList(seriesData).map(i => ({ id: i.id || i.category_id || "", title: i.title || i.name || "" }));
-
-    // Fallback: If no native Series list exists, separate based on category names
-    if (seriesList.length === 0) {
-      seriesList = rawVodList.filter(cat => /series|show|tv|drama|ramadan/i.test(cat.title));
-    }
-    const vodList = rawVodList.filter(cat => !/series|show|tv|drama|ramadan/i.test(cat.title));
-
     res.json({
       success: true,
-      categories: { live: liveList, vod: vodList, series: seriesList }
+      categories: {
+        live: parseStalkerList(liveData).map(i => ({ id: i.id || i.category_id || "", title: i.title || i.name || "" })),
+        vod: parseStalkerList(vodData).map(i => ({ id: i.id || i.category_id || "", title: i.title || i.name || "" })),
+        series: parseStalkerList(seriesData).map(i => ({ id: i.id || i.category_id || "", title: i.title || i.name || "" }))
+      }
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -211,7 +219,7 @@ app.post('/create_account', (req, res) => {
   res.json({ success: true, password });
 });
 
-// 3. Get Items (Annotating Series tags)
+// 3. Get Items (Paginated)
 app.post('/api/get_items', async (req, res) => {
   const { server, mac, type, selectedCats } = req.body;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
@@ -227,7 +235,7 @@ app.post('/api/get_items', async (req, res) => {
           id: item.id || "",
           name: item.name || item.title || "",
           logo: item.logo || item.tv_genre_logo || "",
-          is_series: item.is_series === 1 || item.is_series === '1' || item.is_series === true || type === 'series'
+          is_series: item.is_series || (type === 'series' ? 1 : 0)
         });
       });
     });
@@ -238,52 +246,33 @@ app.post('/api/get_items', async (req, res) => {
   }
 });
 
-// 4. Fetch Seasons of a Series
+// 4. Get Seasons
 app.post('/api/get_seasons', async (req, res) => {
   const { server, mac, seriesId } = req.body;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
-  try {
-    const data = await callStalker(server, mac, 'vod', 'get_ordered_list', { movie_id: seriesId }, clientIp);
-    const items = parseStalkerList(data);
-    const seasons = items.filter(it => 
-      it.is_season === 1 || it.is_season === '1' || it.is_season === true || String(it.name).toLowerCase().includes('season')
-    ).map(it => ({
-      id: it.id || it.season_id,
-      name: it.name || `Season ${it.series_number || 1}`,
-      seriesId: seriesId
-    }));
-    res.json({ success: true, seasons });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  if (!server || !mac || !seriesId) return res.status(400).json({ error: 'Missing parameters' });
+  
+  const seasons = await getSeriesSeasons(server, mac, seriesId, clientIp);
+  res.json({ success: true, data: seasons });
 });
 
-// 5. Fetch Episodes inside a Season
+// 5. Get Episodes
 app.post('/api/get_episodes', async (req, res) => {
   const { server, mac, seriesId, seasonId } = req.body;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
-  try {
-    const data = await callStalker(server, mac, 'vod', 'get_ordered_list', { movie_id: seriesId, season_id: seasonId }, clientIp);
-    const items = parseStalkerList(data);
-    const episodes = items.map(it => ({
-      id: it.id,
-      name: it.name || `Episode ${it.series_number || 1}`,
-      episodeNumber: it.series_number || 1,
-      logo: it.logo || ''
-    }));
-    res.json({ success: true, episodes });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  if (!server || !mac || !seriesId || !seasonId) return res.status(400).json({ error: 'Missing parameters' });
+
+  const episodes = await getSeasonEpisodes(server, mac, seriesId, seasonId, clientIp);
+  res.json({ success: true, data: episodes });
 });
 
 // 6. Proxy Stream (Redirects client)
 app.get('/proxy_stream', async (req, res) => {
-  const { server, mac, stream_id, type, is_episode } = req.query;
+  const { server, mac, stream_id, type } = req.query;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
 
   try {
-    const resolvedUrl = await resolveStreamLink(server, mac, stream_id, type, clientIp, is_episode);
+    const resolvedUrl = await resolveStreamLink(server, mac, stream_id, type, clientIp);
     if (!resolvedUrl) return res.status(404).send('Unable to resolve stream');
 
     res.redirect(302, resolvedUrl);
@@ -292,7 +281,7 @@ app.get('/proxy_stream', async (req, res) => {
   }
 });
 
-// 7. Get M3U
+// 7. Get M3U (Paginated across all selections)
 app.get('/get.php', async (req, res) => {
   const { data } = req.query;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
@@ -310,7 +299,7 @@ app.get('/get.php', async (req, res) => {
       const results = await Promise.all(promises);
       results.forEach(channels => {
         channels.forEach(ch => {
-          m3uLines.push(`#EXTINF:-1 tvg-id="${ch.id}" tvg-name="${ch.name}" tvg-logo="${ch.logo || ''}" group-title="Live TV",${ch.name}`);
+          m3uLines.push(`#EXTINF:-1 tvg-id="${ch.id}" tvg-name="${ch.name}" tvg-logo="${ch.logo || ''}" group-title="Live Channels",${ch.name}`);
           m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${ch.id}&type=itv`);
         });
       });
@@ -322,7 +311,7 @@ app.get('/get.php', async (req, res) => {
       const results = await Promise.all(promises);
       results.forEach(movies => {
         movies.forEach(mv => {
-          m3uLines.push(`#EXTINF:-1 tvg-id="${mv.id}" tvg-name="${mv.name}" tvg-logo="${mv.logo || ''}" group-title="Movies",${mv.name}`);
+          m3uLines.push(`#EXTINF:-1 tvg-id="${mv.id}" tvg-name="${mv.name}" tvg-logo="${mv.logo || ''}" group-title="VOD Movies",${mv.name}`);
           m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${mv.id}&type=vod`);
         });
       });
