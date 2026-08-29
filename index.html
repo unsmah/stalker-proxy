@@ -170,27 +170,32 @@
             </div>
         </div>
 
-        <!-- TV Series Episodes Panel (Shown dynamically when a series parent container is selected) -->
-        <div id="seriesEpisodesPanel" class="bg-black/40 border border-yellow-500/20 rounded-xl p-5 hidden flex flex-col gap-3">
-            <h4 id="episodesPanelTitle" class="text-yellow-500 text-sm font-black pb-2 border-b border-white/5 text-center">TV Series - Episodes</h4>
-            <div id="modalEpisodeList" class="items-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 py-2"></div>
-        </div>
-
+        <!-- Live Channels Section -->
         <h4 class="text-sky-400 text-sm font-black tracking-wide">Live Streams Available</h4>
         <div id="modalLiveList" class="items-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 py-2"></div>
 
+        <!-- VOD Section -->
         <h4 class="text-sky-400 text-sm font-black tracking-wide">VOD Content Available</h4>
         <div id="modalVodList" class="items-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 py-2"></div>
 
-        <h4 class="text-sky-400 text-sm font-black tracking-wide">TV Series Available</h4>
+        <!-- Series Section with Expandable Episodes -->
+        <h4 class="text-sky-400 text-sm font-black tracking-wide">TV Series (Click to view episodes)</h4>
         <div id="modalSeriesList" class="items-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 py-2"></div>
+        
+        <!-- Episodes Display Area -->
+        <div id="episodesContainer" class="hidden mt-4">
+            <div class="flex items-center justify-between mb-3">
+                <h4 class="text-yellow-400 text-sm font-black tracking-wide" id="episodeTitle">Episodes</h4>
+                <button id="btnCloseEpisodes" class="bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs py-1.5 px-4 rounded transition active:scale-95">Close Episodes</button>
+            </div>
+            <div id="episodesList" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 py-2"></div>
+        </div>
     </div>
 </div>
 
 <script>
-    // Points default API engine to your target Render deployment
     const CONFIG = {
-        WORKER: "https://stalker-proxy.onrender.com", // <--- Paste your Render URL here
+        WORKER: "https://stalker-proxy-cu5p.onrender.com",
         DB_URL: "https://raw.githubusercontent.com/djamekchaouadi/SERVER/main/1.txt"
     };
 
@@ -198,6 +203,7 @@
     let currentLanguage = 'en';
     let dbCollection = [];
     let scannedCategories = { live: [], vod: [], series: [] };
+    let currentSeriesContext = null; // Stores series ID and name for episode fetching
 
     // Dictionary mappings for multilingual strings
     const langDict = {
@@ -439,33 +445,40 @@
         document.getElementById('previewModal').classList.add('flex');
         document.getElementById('modalLiveList').innerHTML = '<span class="text-yellow-500 text-xs">Loading Channels...</span>';
         document.getElementById('modalVodList').innerHTML = '<span class="text-yellow-500 text-xs">Loading Movie Directory...</span>';
-        document.getElementById('modalSeriesList').innerHTML = '<span class="text-yellow-500 text-xs">Loading TV Series...</span>';
+        document.getElementById('modalSeriesList').innerHTML = '<span class="text-yellow-500 text-xs">Loading Series...</span>';
+        document.getElementById('episodesContainer').classList.add('hidden');
 
         // Load Live elements
         if (payload.selections.l.length > 0) {
-            fetchContent('itv', payload.selections.l, payload, 'modalLiveList');
+            fetchContent('itv', payload.selections.l, payload, 'modalLiveList', false);
         } else {
             document.getElementById('modalLiveList').innerHTML = '<span class="text-slate-400 text-xs">No channel categories checked.</span>';
         }
 
         // Load VOD elements
         if (payload.selections.v.length > 0) {
-            fetchContent('vod', payload.selections.v, payload, 'modalVodList');
+            fetchContent('vod', payload.selections.v, payload, 'modalVodList', false);
         } else {
             document.getElementById('modalVodList').innerHTML = '<span class="text-slate-400 text-xs">No VOD categories checked.</span>';
         }
 
         // Load Series elements
         if (payload.selections.s.length > 0) {
-            fetchContent('series', payload.selections.s, payload, 'modalSeriesList');
+            fetchContent('series', payload.selections.s, payload, 'modalSeriesList', true);
         } else {
             document.getElementById('modalSeriesList').innerHTML = '<span class="text-slate-400 text-xs">No series categories checked.</span>';
         }
     });
 
-    async function fetchContent(type, categories, payload, targetElementId) {
+    // Close Episodes button
+    document.getElementById('btnCloseEpisodes').addEventListener('click', () => {
+        document.getElementById('episodesContainer').classList.add('hidden');
+        currentSeriesContext = null;
+    });
+
+    async function fetchContent(type, categories, payload, targetElementId, isSeries) {
         try {
-            const res = await fetch(`${CONFIG.WORKER}/api/get_items`, {
+            const res = await fetch(`${CONFIG[activeEngine]}/api/get_items`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ server: payload.server, mac: payload.mac, type: type, selectedCats: categories })
@@ -476,15 +489,20 @@
                 let htmlContent = '';
                 result.data.forEach(item => {
                     const img = item.logo ? `<img src="${item.logo}" class="max-w-[60px] max-h-[60px] mb-2 object-contain rounded" onerror="this.style.display='none'">` : '';
-                    if (type === 'series') {
+                    
+                    if (isSeries) {
+                        // Series cards - clickable to show episodes
                         htmlContent += `
-                            <div id="stream-${item.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[110px] hover:border-sky-500 hover:bg-sky-500/10 hover:scale-102" onclick="loadEpisodes('${payload.server}', '${payload.mac}', '${item.id}', '${item.name.replace(/'/g, "\\'")}')">
+                            <div id="series-${item.id}" class="series-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[110px] hover:border-sky-500 hover:bg-sky-500/10 hover:scale-102" 
+                                 onclick="fetchAndShowEpisodes('${payload.server}', '${payload.mac}', '${item.id}', '${item.name.replace(/'/g, "\\'")}')">
                                 ${img}
                                 <span class="text-[11px] font-bold text-slate-300 break-words leading-tight">${item.name}</span>
                             </div>`;
                     } else {
+                        // Regular content (Live or VOD)
                         htmlContent += `
-                            <div id="stream-${item.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[110px] hover:border-sky-500 hover:bg-sky-500/10 hover:scale-102" onclick="streamPlay('${payload.server}', '${payload.mac}', '${item.id}', '${type}', '${item.name.replace(/'/g, "\\'")}', 'stream-${item.id}', '${encodeURIComponent(item.cmd || '')}')">
+                            <div id="stream-${item.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[110px] hover:border-sky-500 hover:bg-sky-500/10 hover:scale-102" 
+                                 onclick="streamPlay('${payload.server}', '${payload.mac}', '${item.id}', '${type}', '${item.name.replace(/'/g, "\\'")}', 'stream-${item.id}')">
                                 ${img}
                                 <span class="text-[11px] font-bold text-slate-300 break-words leading-tight">${item.name}</span>
                             </div>`;
@@ -492,51 +510,68 @@
                 });
                 document.getElementById(targetElementId).innerHTML = htmlContent;
             } else {
-                document.getElementById(targetElementId).innerHTML = '<span class="text-slate-400 text-xs">No stream indexes parsed.</span>';
+                const msg = isSeries ? 'No series parsed.' : 'No stream indexes parsed.';
+                document.getElementById(targetElementId).innerHTML = `<span class="text-slate-400 text-xs">${msg}</span>`;
             }
         } catch (e) {
             document.getElementById(targetElementId).innerHTML = '<span class="text-slate-400 text-xs">Network fetch error compiling streams.</span>';
         }
     }
 
-    // Dynamic Nested Episode Loader
-    window.loadEpisodes = async function(server, mac, seriesId, seriesName) {
-        pushLog(`Fetching episode directory for TV Series: ${seriesName}`, "info");
-        const panel = document.getElementById('seriesEpisodesPanel');
-        const title = document.getElementById('episodesPanelTitle');
-        const grid = document.getElementById('modalEpisodeList');
-
-        panel.classList.remove('hidden');
-        title.innerText = `${seriesName} - Episodes`;
-        grid.innerHTML = '<span class="text-yellow-500 text-xs">Loading episodes from portal...</span>';
-
-        // Auto-scroll viewer into the nested episode selection box
-        panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Fetch and display episodes for a series
+    window.fetchAndShowEpisodes = async function(server, mac, seriesId, seriesName) {
+        pushLog(`Fetching episodes for series: ${seriesName}`, "info");
+        
+        // Store current series context
+        currentSeriesContext = { server, mac, seriesId, seriesName };
+        
+        const episodesContainer = document.getElementById('episodesContainer');
+        const episodesList = document.getElementById('episodesList');
+        const episodeTitle = document.getElementById('episodeTitle');
+        
+        episodeTitle.textContent = `${seriesName} - Episodes`;
+        episodesList.innerHTML = '<span class="text-yellow-500 text-xs">Loading episodes...</span>';
+        episodesContainer.classList.remove('hidden');
 
         try {
-            const res = await fetch(`${CONFIG.WORKER}/api/get_episodes`, {
+            const res = await fetch(`${CONFIG[activeEngine]}/api/get_episodes`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ server, mac, series_id: seriesId })
+                body: JSON.stringify({ server, mac, seriesId })
             });
-            const result = await res.json();
+            const data = await res.json();
 
-            if (result.success && result.data.length > 0) {
+            if (data.success && data.seasons) {
                 let htmlContent = '';
-                result.data.forEach(ep => {
-                    const img = ep.logo ? `<img src="${ep.logo}" class="max-w-[60px] max-h-[60px] mb-2 object-contain rounded" onerror="this.style.display='none'">` : '';
-                    htmlContent += `
-                        <div id="stream-${ep.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[110px] hover:border-yellow-500 hover:bg-yellow-500/10 hover:scale-102" onclick="streamPlay('${server}', '${mac}', '${ep.id}', 'vod', '${seriesName} - ${ep.name.replace(/'/g, "\\'")}', 'stream-${ep.id}', '${encodeURIComponent(ep.cmd || '')}')">
-                            ${img}
-                            <span class="text-[11px] font-bold text-slate-300 break-words leading-tight">${ep.name}</span>
-                        </div>`;
+                // Sort seasons
+                const sortedSeasons = Object.keys(data.seasons).sort((a, b) => parseInt(a) - parseInt(b));
+                
+                sortedSeasons.forEach(seasonNum => {
+                    const episodes = data.seasons[seasonNum];
+                    htmlContent += `<div class="season-group col-span-full mb-2"><span class="text-yellow-400 font-bold text-sm">Season ${seasonNum}</span></div>`;
+                    
+                    // Sort episodes by episode number
+                    episodes.sort((a, b) => parseInt(a.episode_number) - parseInt(b.episode_number));
+                    
+                    episodes.forEach(ep => {
+                        const img = ep.logo ? `<img src="${ep.logo}" class="max-w-[60px] max-h-[60px] mb-2 object-contain rounded" onerror="this.style.display='none'">` : '';
+                        htmlContent += `
+                            <div class="episode-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[110px] hover:border-green-500 hover:bg-green-500/10 hover:scale-102"
+                                 onclick="streamPlay('${server}', '${mac}', '${ep.id}', 'series', '${seriesName} - S${seasonNum}E${ep.episode_number} - ${ep.name.replace(/'/g, "\\'")}', 'episode-${ep.id}', '${seasonNum}', '${ep.episode_number}')">
+                                ${img}
+                                <span class="text-[10px] font-bold text-slate-300 break-words leading-tight">S${seasonNum}E${ep.episode_number}</span>
+                                <span class="text-[10px] text-slate-400 break-words leading-tight">${ep.name}</span>
+                            </div>`;
+                    });
                 });
-                grid.innerHTML = htmlContent;
+                episodesList.innerHTML = htmlContent;
+                pushLog(`Loaded ${data.total_episodes} episodes for ${seriesName}`, "success");
             } else {
-                grid.innerHTML = '<span class="text-slate-400 text-xs">No episodes found for this show.</span>';
+                episodesList.innerHTML = '<span class="text-slate-400 text-xs">No episodes found for this series.</span>';
             }
         } catch (e) {
-            grid.innerHTML = '<span class="text-slate-400 text-xs">Failed loading episodes.</span>';
+            episodesList.innerHTML = '<span class="text-slate-400 text-xs">Error loading episodes.</span>';
+            pushLog(`Error fetching episodes: ${e.message}`, "error");
         }
     };
 
@@ -544,10 +579,16 @@
     let mpegtsPlayer = null;
     let hlsPlayer = null;
 
-    window.streamPlay = function(server, mac, streamId, type, label, cardElementId, passedCmd = '') {
+    window.streamPlay = function(server, mac, streamId, type, label, cardElementId, season = null, episode = null) {
         document.getElementById('previewTitle').innerText = label;
-        // Point to proxy_stream without mode=proxy to let Cloudflare safely Redirect 302
-        const proxyStream = `${CONFIG[activeEngine]}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${streamId}&type=${type}&cmd=${passedCmd}`;
+        
+        let proxyStream = `${CONFIG[activeEngine]}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${streamId}&type=${type}`;
+        
+        // Add season and episode parameters for series
+        if (type === 'series' && season && episode) {
+            proxyStream += `&season=${season}&episode=${episode}`;
+        }
+        
         const videoElement = document.getElementById('videoPlayer');
 
         // Reveal Quick Action controls & browser warning on stream click
@@ -562,7 +603,7 @@
         document.getElementById('btnExternalVlc').href = proxyStream;
 
         // Dynamic Active Card Highlight
-        document.querySelectorAll('.stream-card').forEach(el => {
+        document.querySelectorAll('.stream-card, .episode-card, .series-card').forEach(el => {
             el.classList.remove('border-yellow-500', 'bg-yellow-500/15', 'ring-2', 'ring-yellow-500/30');
             el.classList.add('border-slate-800', 'bg-black/50');
         });
@@ -579,7 +620,7 @@
         try {
             if (mpegts.getFeatureList().mseLivePlayback) {
                 mpegtsPlayer = mpegts.createPlayer({
-                    type: type === 'vod' ? 'mp4' : 'm2ts',
+                    type: type === 'vod' || type === 'series' ? 'mp4' : 'm2ts',
                     isLive: type === 'itv',
                     url: proxyStream
                 });
@@ -664,12 +705,13 @@
         document.getElementById('previewModal').classList.add('hidden');
         document.getElementById('previewTitle').innerText = "Select content below to load playback...";
         
-        // Hide Quick Action controls and episodes panel on close
+        // Hide Quick Action controls on close
         document.getElementById('streamActions').classList.add('hidden');
         document.getElementById('mixedContentWarning').classList.add('hidden');
-        document.getElementById('seriesEpisodesPanel').classList.add('hidden');
+        document.getElementById('episodesContainer').classList.add('hidden');
         
         stopAndCleanupPlayers();
+        currentSeriesContext = null;
     });
 
     // Helper Functions
@@ -680,9 +722,6 @@
             pushLog(`Copied to Clipboard: ${element.value}`, "success");
         });
     };
-
-    // Auto-fill active engine URL on launch
-    document.getElementById('txtPortal').placeholder = "S T A L K E R -*- P O R T A L";
 
     function enableOptionalControls() {
         ['btnConvert', 'btnDownloadM3u', 'btnPreview'].forEach(id => {
