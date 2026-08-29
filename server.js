@@ -78,14 +78,14 @@ function parseStalkerList(data) {
   return [];
 }
 
-// Compiles all pages for a category concurrently
+// Compiles pages while filtering Series vs standalone Movies
 async function getCategoryItems(server, mac, type, catId, clientIp) {
-  const paramKey = type === 'itv' ? 'genre' : 'category';
+  const stalkerType = type === 'series' ? 'vod' : type;
+  const paramKey = stalkerType === 'itv' ? 'genre' : 'category';
   let allData = [];
 
   try {
-    // 1. Fetch Page 1 to inspect total counts
-    const firstPage = await callStalker(server, mac, type, 'get_ordered_list', { [paramKey]: catId, p: 1 }, clientIp).catch(() => null);
+    const firstPage = await callStalker(server, mac, stalkerType, 'get_ordered_list', { [paramKey]: catId, p: 1 }, clientIp).catch(() => null);
     if (!firstPage) return [];
 
     const jsData = firstPage.js || {};
@@ -95,14 +95,13 @@ async function getCategoryItems(server, mac, type, catId, clientIp) {
     const totalItems = parseInt(jsData.total_items || 0, 10);
     const maxPageItems = parseInt(jsData.max_page_items || firstPageItems.length || 0, 10);
 
-    // 2. Fetch remaining pages if more exist
     if (totalItems > maxPageItems && maxPageItems > 0) {
       const totalPages = Math.ceil(totalItems / maxPageItems);
       const pagePromises = [];
 
       for (let page = 2; page <= totalPages; page++) {
         pagePromises.push(
-          callStalker(server, mac, type, 'get_ordered_list', { [paramKey]: catId, p: page }, clientIp)
+          callStalker(server, mac, stalkerType, 'get_ordered_list', { [paramKey]: catId, p: page }, clientIp)
             .then(res => parseStalkerList(res))
             .catch(() => [])
         );
@@ -113,6 +112,23 @@ async function getCategoryItems(server, mac, type, catId, clientIp) {
         allData = [...allData, ...pageItems];
       });
     }
+
+    // Filter Series vs Movies based on is_series flags
+    if (type === 'series') {
+      allData = allData.filter(it => 
+        it.is_series === 1 || 
+        it.is_series === '1' || 
+        it.is_series === true || 
+        it.model === 'series'
+      );
+    } else if (type === 'vod') {
+      allData = allData.filter(it => 
+        it.is_series !== 1 && 
+        it.is_series !== '1' && 
+        it.is_series !== true && 
+        it.model !== 'series'
+      );
+    }
   } catch (e) {
     console.error(`Pagination compilation error on category ${catId}:`, e.message);
   }
@@ -120,60 +136,30 @@ async function getCategoryItems(server, mac, type, catId, clientIp) {
   return allData;
 }
 
-// Dynamically resolves media commands for Live TV, Movies, and Series
-async function resolveStreamLink(server, mac, streamId, type, clientIp) {
+async function resolveStreamLink(server, mac, streamId, type, clientIp, isEpisode = '0') {
   let resolvedUrl = '';
-  let cmd = '';
+  
+  // Episode-specific URL resolution
+  if (isEpisode === '1' || isEpisode === 1 || type === 'episode') {
+    const resData = await callStalker(server, mac, 'vod', 'get_episode_stream', { episode_id: streamId }, clientIp).catch(() => null);
+    resolvedUrl = resData?.js?.cmd || resData?.js || '';
+  } else {
+    // Movies & ITV resolution
+    let cmd = type === 'itv' ? `ffmpeg http://localhost/ch/${streamId}` : `/media/${streamId}.mpg`;
+    let resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
+    resolvedUrl = resData?.js?.cmd || resData?.js || '';
 
-  try {
-    if (type === 'itv') {
-      // Live TV
-      cmd = `ffmpeg http://localhost/ch/${streamId}`;
-      let resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
-      resolvedUrl = resData?.js?.cmd || resData?.js || '';
-      
-      if (!resolvedUrl) {
-        cmd = `ffmpeg ${streamId}`;
-        resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
-        resolvedUrl = resData?.js?.cmd || resData?.js || '';
-      }
-    } 
-    else if (type === 'vod') {
-      // VOD: Query target movie details to extract its exact server path command
-      const vodDetails = await callStalker(server, mac, 'vod', 'get_ordered_list', { movie_id: streamId }, clientIp).catch(() => null);
-      const vodItems = parseStalkerList(vodDetails);
-      if (vodItems && vodItems.length > 0) {
-        cmd = vodItems[0].cmd || vodItems[0].cmd_orig || '';
-      }
-      
-      // Secondary fallback commands if direct query fails
-      if (!cmd) cmd = `/media/${streamId}.mpg`;
-
-      let resData = await callStalker(server, mac, 'vod', 'create_link', { cmd }, clientIp).catch(() => null);
-      resolvedUrl = resData?.js?.cmd || resData?.js || '';
-
-      if (!resolvedUrl) {
-        cmd = `/media/${streamId}.mkv`;
-        resData = await callStalker(server, mac, 'vod', 'create_link', { cmd }, clientIp).catch(() => null);
-        resolvedUrl = resData?.js?.cmd || resData?.js || '';
-      }
-    } 
-    else if (type === 'series') {
-      // TV Series: Query series folder, resolve the first episode, and authorize its command
-      const seriesDetails = await callStalker(server, mac, 'series', 'get_ordered_list', { movie_id: streamId }, clientIp).catch(() => null);
-      const seriesItems = parseStalkerList(seriesDetails);
-      if (seriesItems && seriesItems.length > 0) {
-        const firstEpisode = seriesItems[0];
-        cmd = firstEpisode.cmd || firstEpisode.cmd_orig || '';
-      }
-
-      if (!cmd) cmd = `/media/${streamId}.mpg`;
-
-      let resData = await callStalker(server, mac, 'series', 'create_link', { cmd }, clientIp).catch(() => null);
+    if (!resolvedUrl) {
+      cmd = type === 'itv' ? `ffmpeg ${streamId}` : `${streamId}`;
+      resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
       resolvedUrl = resData?.js?.cmd || resData?.js || '';
     }
-  } catch (e) {
-    console.error("Stream link resolution failure:", e.message);
+
+    if (!resolvedUrl && type === 'vod') {
+      cmd = `/media/${streamId}.mkv`;
+      resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
+      resolvedUrl = resData?.js?.cmd || resData?.js || '';
+    }
   }
 
   if (resolvedUrl) {
@@ -184,7 +170,7 @@ async function resolveStreamLink(server, mac, streamId, type, clientIp) {
 
 // --- Endpoints ---
 
-// 1. Scan Categories
+// 1. Scan Categories (With automatic Series category fallback parsing)
 app.get('/api/scan', async (req, res) => {
   const { server, mac } = req.query;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
@@ -198,13 +184,19 @@ app.get('/api/scan', async (req, res) => {
       callStalker(server, mac, 'series', 'get_categories', {}, clientIp).catch(() => null)
     ]);
 
+    const liveList = parseStalkerList(liveData).map(i => ({ id: i.id || i.category_id || "", title: i.title || i.name || "" }));
+    const rawVodList = parseStalkerList(vodData).map(i => ({ id: i.id || i.category_id || "", title: i.title || i.name || "" }));
+    let seriesList = parseStalkerList(seriesData).map(i => ({ id: i.id || i.category_id || "", title: i.title || i.name || "" }));
+
+    // Fallback: If no native Series list exists, separate based on category names
+    if (seriesList.length === 0) {
+      seriesList = rawVodList.filter(cat => /series|show|tv|drama|ramadan/i.test(cat.title));
+    }
+    const vodList = rawVodList.filter(cat => !/series|show|tv|drama|ramadan/i.test(cat.title));
+
     res.json({
       success: true,
-      categories: {
-        live: parseStalkerList(liveData).map(i => ({ id: i.id || i.category_id || "", title: i.title || i.name || "" })),
-        vod: parseStalkerList(vodData).map(i => ({ id: i.id || i.category_id || "", title: i.title || i.name || "" })),
-        series: parseStalkerList(seriesData).map(i => ({ id: i.id || i.category_id || "", title: i.title || i.name || "" }))
-      }
+      categories: { live: liveList, vod: vodList, series: seriesList }
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -219,7 +211,7 @@ app.post('/create_account', (req, res) => {
   res.json({ success: true, password });
 });
 
-// 3. Get Items (Paginated)
+// 3. Get Items (Annotating Series tags)
 app.post('/api/get_items', async (req, res) => {
   const { server, mac, type, selectedCats } = req.body;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
@@ -234,7 +226,8 @@ app.post('/api/get_items', async (req, res) => {
         allItems.push({
           id: item.id || "",
           name: item.name || item.title || "",
-          logo: item.logo || item.tv_genre_logo || ""
+          logo: item.logo || item.tv_genre_logo || "",
+          is_series: item.is_series === 1 || item.is_series === '1' || item.is_series === true || type === 'series'
         });
       });
     });
@@ -245,13 +238,52 @@ app.post('/api/get_items', async (req, res) => {
   }
 });
 
-// 4. Proxy Stream (Redirects client)
+// 4. Fetch Seasons of a Series
+app.post('/api/get_seasons', async (req, res) => {
+  const { server, mac, seriesId } = req.body;
+  const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+  try {
+    const data = await callStalker(server, mac, 'vod', 'get_ordered_list', { movie_id: seriesId }, clientIp);
+    const items = parseStalkerList(data);
+    const seasons = items.filter(it => 
+      it.is_season === 1 || it.is_season === '1' || it.is_season === true || String(it.name).toLowerCase().includes('season')
+    ).map(it => ({
+      id: it.id || it.season_id,
+      name: it.name || `Season ${it.series_number || 1}`,
+      seriesId: seriesId
+    }));
+    res.json({ success: true, seasons });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 5. Fetch Episodes inside a Season
+app.post('/api/get_episodes', async (req, res) => {
+  const { server, mac, seriesId, seasonId } = req.body;
+  const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
+  try {
+    const data = await callStalker(server, mac, 'vod', 'get_ordered_list', { movie_id: seriesId, season_id: seasonId }, clientIp);
+    const items = parseStalkerList(data);
+    const episodes = items.map(it => ({
+      id: it.id,
+      name: it.name || `Episode ${it.series_number || 1}`,
+      episodeNumber: it.series_number || 1,
+      logo: it.logo || ''
+    }));
+    res.json({ success: true, episodes });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 6. Proxy Stream (Redirects client)
 app.get('/proxy_stream', async (req, res) => {
-  const { server, mac, stream_id, type } = req.query;
+  const { server, mac, stream_id, type, is_episode } = req.query;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
 
   try {
-    const resolvedUrl = await resolveStreamLink(server, mac, stream_id, type, clientIp);
+    const resolvedUrl = await resolveStreamLink(server, mac, stream_id, type, clientIp, is_episode);
     if (!resolvedUrl) return res.status(404).send('Unable to resolve stream');
 
     res.redirect(302, resolvedUrl);
@@ -260,7 +292,7 @@ app.get('/proxy_stream', async (req, res) => {
   }
 });
 
-// 5. Get M3U (Generates full, multi-category compile)
+// 7. Get M3U
 app.get('/get.php', async (req, res) => {
   const { data } = req.query;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
@@ -278,7 +310,7 @@ app.get('/get.php', async (req, res) => {
       const results = await Promise.all(promises);
       results.forEach(channels => {
         channels.forEach(ch => {
-          m3uLines.push(`#EXTINF:-1 tvg-id="${ch.id}" tvg-name="${ch.name}" tvg-logo="${ch.logo || ''}" group-title="Live Channels",${ch.name}`);
+          m3uLines.push(`#EXTINF:-1 tvg-id="${ch.id}" tvg-name="${ch.name}" tvg-logo="${ch.logo || ''}" group-title="Live TV",${ch.name}`);
           m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${ch.id}&type=itv`);
         });
       });
@@ -290,20 +322,8 @@ app.get('/get.php', async (req, res) => {
       const results = await Promise.all(promises);
       results.forEach(movies => {
         movies.forEach(mv => {
-          m3uLines.push(`#EXTINF:-1 tvg-id="${mv.id}" tvg-name="${mv.name}" tvg-logo="${mv.logo || ''}" group-title="VOD Movies",${mv.name}`);
+          m3uLines.push(`#EXTINF:-1 tvg-id="${mv.id}" tvg-name="${mv.name}" tvg-logo="${mv.logo || ''}" group-title="Movies",${mv.name}`);
           m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${mv.id}&type=vod`);
-        });
-      });
-    }
-
-    // Process TV Series
-    if (selections.s && selections.s.length > 0) {
-      const promises = selections.s.map(catId => getCategoryItems(server, mac, 'series', catId, clientIp));
-      const results = await Promise.all(promises);
-      results.forEach(seriesList => {
-        seriesList.forEach(sr => {
-          m3uLines.push(`#EXTINF:-1 tvg-id="${sr.id}" tvg-name="${sr.name}" tvg-logo="${sr.logo || ''}" group-title="TV Series",${sr.name}`);
-          m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${sr.id}&type=series`);
         });
       });
     }
