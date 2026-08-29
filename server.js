@@ -78,24 +78,30 @@ function parseStalkerList(data) {
   return [];
 }
 
-// Unified Pagination Fetcher: Compiles all pages for a category concurrently
+// Robust Pagination Fetcher with Fallback for Portals rejecting page parameters
 async function getCategoryItems(server, mac, type, catId, clientIp) {
   const paramKey = type === 'itv' ? 'genre' : 'category';
   let allData = [];
 
   try {
-    // 1. Fetch Page 1 to inspect total counts
-    const firstPage = await callStalker(server, mac, type, 'get_ordered_list', { [paramKey]: catId, p: 1 }, clientIp).catch(() => null);
-    if (!firstPage) return [];
+    // 1. Try to fetch using standard page p=1 first
+    let pageData = await callStalker(server, mac, type, 'get_ordered_list', { [paramKey]: catId, p: 1 }, clientIp).catch(() => null);
+    let pageItems = parseStalkerList(pageData);
 
-    const jsData = firstPage.js || {};
-    const firstPageItems = parseStalkerList(firstPage);
-    allData = [...firstPageItems];
+    // Defensive Fallback: If p=1 returned empty, request without the pagination parameter
+    if (pageItems.length === 0) {
+      pageData = await callStalker(server, mac, type, 'get_ordered_list', { [paramKey]: catId }, clientIp).catch(() => null);
+      pageItems = parseStalkerList(pageData);
+    }
 
+    if (!pageData) return [];
+    allData = [...pageItems];
+
+    const jsData = pageData.js || {};
     const totalItems = parseInt(jsData.total_items || 0, 10);
-    const maxPageItems = parseInt(jsData.max_page_items || firstPageItems.length || 0, 10);
+    const maxPageItems = parseInt(jsData.max_page_items || pageItems.length || 0, 10);
 
-    // 2. Fetch remaining pages if more exist
+    // 2. Fetch remaining pages concurrently if more exist
     if (totalItems > maxPageItems && maxPageItems > 0) {
       const totalPages = Math.ceil(totalItems / maxPageItems);
       const pagePromises = [];
@@ -109,8 +115,8 @@ async function getCategoryItems(server, mac, type, catId, clientIp) {
       }
 
       const pagesResults = await Promise.all(pagePromises);
-      pagesResults.forEach(pageItems => {
-        allData = [...allData, ...pageItems];
+      pagesResults.forEach(pItems => {
+        allData = [...allData, ...pItems];
       });
     }
   } catch (e) {
@@ -223,7 +229,7 @@ app.get('/proxy_stream', async (req, res) => {
   }
 });
 
-// 5. Get M3U (Paginated across all selections)
+// 5. Get M3U (Supports Live, VOD, and Series Categories)
 app.get('/get.php', async (req, res) => {
   const { data } = req.query;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
@@ -255,6 +261,18 @@ app.get('/get.php', async (req, res) => {
         movies.forEach(mv => {
           m3uLines.push(`#EXTINF:-1 tvg-id="${mv.id}" tvg-name="${mv.name}" tvg-logo="${mv.logo || ''}" group-title="VOD Movies",${mv.name}`);
           m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${mv.id}&type=vod`);
+        });
+      });
+    }
+
+    // Process TV Series (Shows)
+    if (selections.s && selections.s.length > 0) {
+      const promises = selections.s.map(catId => getCategoryItems(server, mac, 'series', catId, clientIp));
+      const results = await Promise.all(promises);
+      results.forEach(series => {
+        series.forEach(sr => {
+          m3uLines.push(`#EXTINF:-1 tvg-id="${sr.id}" tvg-name="${sr.name}" tvg-logo="${sr.logo || ''}" group-title="TV Series - Shows",${sr.name}`);
+          m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${sr.id}&type=series`);
         });
       });
     }
