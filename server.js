@@ -120,26 +120,21 @@ async function getCategoryItems(server, mac, type, catId, clientIp) {
   return allData;
 }
 
-// Dynamic Link Resolver utilizing original DB command values
-async function resolveStreamLink(server, mac, streamId, type, clientIp, cmdParam = '') {
+async function resolveStreamLink(server, mac, streamId, type, clientIp) {
   let resolvedUrl = '';
   
-  // 1. Try original DB Command string provided by frontend first
-  if (cmdParam) {
-    let resData = await callStalker(server, mac, type, 'create_link', { cmd: cmdParam }, clientIp).catch(() => null);
-    resolvedUrl = resData?.js?.cmd || resData?.js || '';
-  }
+  let cmd = type === 'itv' ? `ffmpeg http://localhost/ch/${streamId}` : `/media/${streamId}.mpg`;
+  let resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
+  resolvedUrl = resData?.js?.cmd || resData?.js || '';
 
-  // 2. Fallback A: Default commands
-  if (!resolvedUrl) {
-    let cmd = type === 'itv' ? `ffmpeg http://localhost/ch/${streamId}` : `/media/${streamId}.mpg`;
-    let resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
-    resolvedUrl = resData?.js?.cmd || resData?.js || '';
-  }
-
-  // 3. Fallback B: Raw ID commands
   if (!resolvedUrl) {
     cmd = type === 'itv' ? `ffmpeg ${streamId}` : `${streamId}`;
+    resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
+    resolvedUrl = resData?.js?.cmd || resData?.js || '';
+  }
+
+  if (!resolvedUrl && type === 'vod') {
+    cmd = `/media/${streamId}.mkv`;
     resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
     resolvedUrl = resData?.js?.cmd || resData?.js || '';
   }
@@ -187,7 +182,7 @@ app.post('/create_account', (req, res) => {
   res.json({ success: true, password });
 });
 
-// 3. Get Items (Preserving dynamic cmd parameters)
+// 3. Get Items (Paginated)
 app.post('/api/get_items', async (req, res) => {
   const { server, mac, type, selectedCats } = req.body;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
@@ -197,13 +192,12 @@ app.post('/api/get_items', async (req, res) => {
     const results = await Promise.all(promises);
     let allItems = [];
 
-    results.forEach(resultsList => {
-      resultsList.forEach(item => {
+    results.forEach(items => {
+      items.forEach(item => {
         allItems.push({
           id: item.id || "",
           name: item.name || item.title || "",
-          logo: item.logo || item.tv_genre_logo || "",
-          cmd: item.cmd || "" // Extract original command to resolve file paths
+          logo: item.logo || item.tv_genre_logo || ""
         });
       });
     });
@@ -214,13 +208,13 @@ app.post('/api/get_items', async (req, res) => {
   }
 });
 
-// 4. Proxy Stream (Redirects client using dynamic command values)
+// 4. Proxy Stream (Redirects client)
 app.get('/proxy_stream', async (req, res) => {
-  const { server, mac, stream_id, type, cmd } = req.query;
+  const { server, mac, stream_id, type } = req.query;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
 
   try {
-    const resolvedUrl = await resolveStreamLink(server, mac, stream_id, type, clientIp, cmd);
+    const resolvedUrl = await resolveStreamLink(server, mac, stream_id, type, clientIp);
     if (!resolvedUrl) return res.status(404).send('Unable to resolve stream');
 
     res.redirect(302, resolvedUrl);
@@ -229,7 +223,7 @@ app.get('/proxy_stream', async (req, res) => {
   }
 });
 
-// 5. Get M3U (Preserving database cmd values for player exports)
+// 5. Get M3U (Paginated across all selections)
 app.get('/get.php', async (req, res) => {
   const { data } = req.query;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
@@ -248,7 +242,7 @@ app.get('/get.php', async (req, res) => {
       results.forEach(channels => {
         channels.forEach(ch => {
           m3uLines.push(`#EXTINF:-1 tvg-id="${ch.id}" tvg-name="${ch.name}" tvg-logo="${ch.logo || ''}" group-title="Live Channels",${ch.name}`);
-          m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${ch.id}&type=itv&cmd=${encodeURIComponent(ch.cmd || '')}`);
+          m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${ch.id}&type=itv`);
         });
       });
     }
@@ -260,7 +254,7 @@ app.get('/get.php', async (req, res) => {
       results.forEach(movies => {
         movies.forEach(mv => {
           m3uLines.push(`#EXTINF:-1 tvg-id="${mv.id}" tvg-name="${mv.name}" tvg-logo="${mv.logo || ''}" group-title="VOD Movies",${mv.name}`);
-          m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${mv.id}&type=vod&cmd=${encodeURIComponent(mv.cmd || '')}`);
+          m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${mv.id}&type=vod`);
         });
       });
     }
