@@ -78,12 +78,12 @@ function parseStalkerList(data) {
   return [];
 }
 
-// Unified Pagination Fetcher
+// Compiles and flattens all pages of items (including nested series episodes)
 async function getCategoryItems(server, mac, type, catId, clientIp) {
   let allData = [];
 
   try {
-    // 1. Fetch TV Series Shows (the parent containers)
+    // Specialized Series Episode Flattening logic
     if (type === 'series') {
       const firstPage = await callStalker(server, mac, 'series', 'get_ordered_list', { category: catId, p: 1 }, clientIp).catch(() => null);
       if (!firstPage) return [];
@@ -113,41 +113,33 @@ async function getCategoryItems(server, mac, type, catId, clientIp) {
         });
       }
 
-      return shows.map(item => ({
-        id: item.id || "",
-        name: item.name || item.title || "",
-        logo: item.logo || "",
-        cmd: item.cmd || "",
-        isSeries: true // Tells frontend this is a parent show container
-      }));
+      // Fetch all episodes for each parent show concurrently
+      const episodePromises = shows.map(async (show) => {
+        const showId = show.id;
+        const showName = show.name || show.title || "";
+        
+        const episodesPage = await callStalker(server, mac, 'vod', 'get_ordered_list', { movie_id: showId }, clientIp).catch(() => null);
+        const episodes = parseStalkerList(episodesPage);
+        
+        return episodes.map(ep => ({
+          id: ep.id || "",
+          name: `${showName} - ${ep.name || ep.title || ""}`,
+          logo: ep.logo || show.logo || "",
+          cmd: ep.cmd || `/media/${ep.id}.mpg`
+        }));
+      });
+      
+      const episodesResults = await Promise.all(episodePromises);
+      episodesResults.forEach(epList => {
+        allData = [...allData, ...epList];
+      });
+
+      return allData;
     }
 
-    // 2. Fetch Episodes for a specific Show ID
-    if (type === 'episodes') {
-      const episodesPage = await callStalker(server, mac, 'vod', 'get_ordered_list', { movie_id: catId }, clientIp).catch(() => null);
-      const episodes = parseStalkerList(episodesPage);
-      return episodes.map(ep => ({
-        id: ep.id || "",
-        name: ep.name || ep.title || "",
-        logo: ep.logo || "",
-        cmd: ep.cmd || `/media/${ep.id}.mpg`
-      }));
-    }
-
-    // 3. Fetch Live TV (Standard - bypasses page parameter to avoid blocks)
-    if (type === 'itv') {
-      const liveData = await callStalker(server, mac, 'itv', 'get_ordered_list', { genre: catId }, clientIp).catch(() => null);
-      const channels = parseStalkerList(liveData);
-      return channels.map(item => ({
-        id: item.id || "",
-        name: item.name || item.title || "",
-        logo: item.logo || "",
-        cmd: item.cmd || ""
-      }));
-    }
-
-    // 4. Fetch VOD Movies (Standard Paginated)
-    const firstPage = await callStalker(server, mac, type, 'get_ordered_list', { category: catId, p: 1 }, clientIp).catch(() => null);
+    // Default ITV & VOD Category Fetching
+    const paramKey = type === 'itv' ? 'genre' : 'category';
+    const firstPage = await callStalker(server, mac, type, 'get_ordered_list', { [paramKey]: catId, p: 1 }, clientIp).catch(() => null);
     if (!firstPage) return [];
 
     const jsData = firstPage.js || {};
@@ -168,7 +160,7 @@ async function getCategoryItems(server, mac, type, catId, clientIp) {
 
       for (let page = 2; page <= totalPages; page++) {
         pagePromises.push(
-          callStalker(server, mac, type, 'get_ordered_list', { category: catId, p: page }, clientIp)
+          callStalker(server, mac, type, 'get_ordered_list', { [paramKey]: catId, p: page }, clientIp)
             .then(res => {
               return parseStalkerList(res).map(item => ({
                 id: item.id || "",
@@ -194,7 +186,7 @@ async function getCategoryItems(server, mac, type, catId, clientIp) {
   return allData;
 }
 
-// Resolves actual streaming command
+// Resolves actual streaming command using native command formats first
 async function resolveStreamLink(server, mac, streamId, type, clientIp, passedCmd = '') {
   let resolvedUrl = '';
   
@@ -276,8 +268,7 @@ app.post('/api/get_items', async (req, res) => {
           id: item.id || "",
           name: item.name || item.title || "",
           logo: item.logo || "",
-          cmd: item.cmd || "",
-          isSeries: item.isSeries || false
+          cmd: item.cmd || ""
         });
       });
     });
