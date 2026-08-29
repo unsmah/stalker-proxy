@@ -22,220 +22,165 @@
         }
     </script>
 </head>
-<body class="bg-[#0b0f19] text-slate-100 font-cairo min-h-screen flex flex-col md:flex-row">
+<body class="bg-[#0b0f19] text-slate-100 font-cairo min-h-screen">
 
-    <!-- Left Sidebar Navigation Panel -->
-    <div class="w-full md:w-64 bg-[#0f172a] border-r border-slate-800 flex flex-col p-5 shrink-0 select-none">
-        <div class="mb-8 text-center md:text-left">
-            <h2 class="text-xl font-black text-white tracking-widest uppercase">IPTV UTILITY</h2>
-            <span class="text-[10px] text-sky-400 font-extrabold tracking-widest">BY GAMERDZ1517</span>
+<div id="app-wrapper" class="flex flex-col items-center p-4 md:p-6 pb-10 w-full max-w-7xl mx-auto">
+
+    <!-- Top Navigation Bar -->
+    <div class="top-bar w-full flex justify-between items-center mb-6 flex-wrap gap-4 border-b border-slate-800 pb-4">
+        <div>
+            <h2 class="text-xl font-bold tracking-wide">IPTV Utility Platform</h2>
         </div>
-
-        <nav class="flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-x-visible pb-3 md:pb-0 scrollbar-none">
-            <button onclick="switchTab('tab-config')" id="nav-tab-config" class="nav-tab flex items-center justify-center md:justify-start gap-3 py-3 px-4 rounded-xl text-sm font-bold w-full transition bg-sky-500 text-slate-950">
-                ⚙️ Configuration
-            </button>
-            <button onclick="switchTab('tab-live')" id="nav-tab-live" class="nav-tab flex items-center justify-center md:justify-start gap-3 py-3 px-4 rounded-xl text-sm font-bold w-full transition text-slate-400 hover:bg-white/5 hover:text-white">
-                📺 Live TV
-            </button>
-            <button onclick="switchTab('tab-movies')" id="nav-tab-movies" class="nav-tab flex items-center justify-center md:justify-start gap-3 py-3 px-4 rounded-xl text-sm font-bold w-full transition text-slate-400 hover:bg-white/5 hover:text-white">
-                🎬 Movies (VOD)
-            </button>
-            <button onclick="switchTab('tab-series')" id="nav-tab-series" class="nav-tab flex items-center justify-center md:justify-start gap-3 py-3 px-4 rounded-xl text-sm font-bold w-full transition text-slate-400 hover:bg-white/5 hover:text-white">
-                🎭 TV Series
-            </button>
-            <button onclick="switchTab('tab-logs')" id="nav-tab-logs" class="nav-tab flex items-center justify-center md:justify-start gap-3 py-3 px-4 rounded-xl text-sm font-bold w-full transition text-slate-400 hover:bg-white/5 hover:text-white">
-                💻 System Logs
-            </button>
-        </nav>
-
-        <div class="mt-auto hidden md:flex flex-col gap-3 pt-6 border-t border-slate-800">
-            <button class="bg-sky-500/10 border border-sky-500/30 text-sky-400 py-2 px-4 rounded-lg font-bold text-xs" id="btnEngine">Server: CF Worker</button>
-            <button class="bg-sky-500/10 border border-sky-500/30 text-sky-400 py-2 px-4 rounded-lg font-bold text-xs" id="btnLang">Language: EN / AR</button>
+        <div class="top-actions flex gap-3">
+            <button class="bg-sky-500/10 border border-sky-500/30 text-sky-400 py-1.5 px-4 rounded-lg font-bold text-xs transition duration-200 hover:bg-sky-400 hover:text-slate-900" id="btnEngine">Server: CF Worker</button>
+            <button class="bg-sky-500/10 border border-sky-500/30 text-sky-400 py-1.5 px-4 rounded-lg font-bold text-xs transition duration-200 hover:bg-sky-400 hover:text-slate-900" id="btnLang">Language: EN / AR</button>
         </div>
     </div>
 
-    <!-- Main Active Workspace Panel -->
-    <main class="flex-1 p-6 md:p-10 overflow-y-auto max-h-screen">
+    <!-- Main Container -->
+    <div class="app-container w-full bg-[#0f172a] border border-slate-800 rounded-2xl p-6 md:p-8 shadow-2xl">
         
-        <!-- Tab: Inputs & Config -->
-        <div id="tab-config" class="workspace-tab flex flex-col gap-6">
-            <div class="border-b border-slate-800 pb-4 mb-4">
-                <h1 class="text-2xl font-black text-white uppercase">WORKSPACE CONFIGURATION</h1>
-                <p class="text-xs text-slate-400 mt-1">Initialize Stalker inputs, select categories, and manage deployment pools.</p>
-            </div>
+        <div class="header text-center mb-8">
+            <h1 class="text-2xl md:text-3xl font-black tracking-wide text-white uppercase">STALKER SCANNER & CONVERTER</h1>
+            <h3 class="text-sm mt-2 text-sky-400 font-bold">Parse Portals, Map Categories & Convert Accounts</h3>
+        </div>
 
-            <!-- Connection Inputs -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Portal URL -->
-                <div class="flex flex-col gap-2">
-                    <div class="bg-gradient-to-r from-blue-600 to-blue-500 text-white py-2 px-4 rounded-lg font-bold text-xs">STALKER PORTAL (URL)</div>
-                    <div class="relative flex items-center">
-                        <input type="text" id="txtPortal" placeholder="http://example.com:8080/c/" class="w-full bg-black/40 border border-slate-700 rounded-xl text-slate-100 p-3.5 pr-20 text-sm font-bold outline-none focus:border-sky-500">
-                        <button class="absolute right-2 bg-white/5 border border-white/10 text-slate-300 py-1.5 px-3 rounded-lg text-xs hover:bg-sky-500 hover:text-white" onclick="copyValue('txtPortal')">Copy</button>
-                    </div>
-                </div>
-
-                <!-- MAC Address -->
-                <div class="flex flex-col gap-2">
-                    <div class="bg-gradient-to-r from-blue-600 to-blue-500 text-white py-2 px-4 rounded-lg font-bold text-xs">MAC ADDRESS</div>
-                    <div class="relative flex items-center">
-                        <input type="text" id="txtMac" placeholder="00:1a:79:00:00:00" class="w-full bg-black/40 border border-slate-700 rounded-xl text-slate-100 p-3.5 pr-20 text-sm font-bold outline-none focus:border-sky-500">
-                        <button class="absolute right-2 bg-white/5 border border-white/10 text-slate-300 py-1.5 px-3 rounded-lg text-xs hover:bg-sky-500 hover:text-white" onclick="copyValue('txtMac')">Copy</button>
-                    </div>
+        <!-- Connection Inputs -->
+        <div class="inputs-container grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <!-- Portal URL -->
+            <div class="input-group flex flex-col gap-2 w-full">
+                <button class="btn-main text-white py-3 px-4 rounded-xl text-center shadow-lg transition duration-200 bg-gradient-to-r from-blue-600 to-blue-500 pointer-events-none opacity-90" disabled>
+                    <div class="btn-title text-sm font-black">STALKER PORTAL (URL)</div>
+                    <div class="btn-desc text-[11px] font-semibold opacity-85 mt-1">IPTV Portal Target Domain</div>
+                </button>
+                <div class="input-wrapper relative flex w-full items-center">
+                    <input type="text" id="txtPortal" placeholder="http://example.com:8080/c/" class="w-full bg-black/40 border border-slate-700 rounded-xl text-slate-100 p-3.5 pr-20 text-sm font-bold outline-none transition focus:border-sky-500">
+                    <button class="copy-btn absolute right-2 bg-white/5 border border-white/10 text-slate-300 cursor-pointer py-1.5 px-3 rounded-lg text-xs transition hover:bg-sky-500 hover:text-white" onclick="copyValue('txtPortal')">Copy</button>
                 </div>
             </div>
 
-            <!-- Database Selection Row -->
-            <div class="flex flex-col md:flex-row md:items-center gap-4 border-t border-b border-slate-800 py-6">
-                <button class="py-3 px-6 rounded-xl text-white font-black text-sm bg-gradient-to-r from-teal-600 to-teal-500 md:w-1/2 flex items-center justify-center gap-3 active:scale-98" id="btnFetchDb">
-                    1. Connect & Fetch Server Database
+            <!-- MAC Address -->
+            <div class="input-group flex flex-col gap-2 w-full">
+                <button class="btn-main text-white py-3 px-4 rounded-xl text-center shadow-lg transition duration-200 bg-gradient-to-r from-blue-600 to-blue-500 pointer-events-none opacity-90" disabled>
+                    <div class="btn-title text-sm font-black">MAC ADDRESS</div>
+                    <div class="btn-desc text-[11px] font-semibold opacity-85 mt-1">Portal Authorized Device Identifier</div>
                 </button>
-                <input type="text" id="dbStatusText" placeholder="Database not loaded" readonly class="w-full md:w-1/2 bg-black/40 border border-slate-700 rounded-xl text-slate-100 p-3.5 text-sm font-bold text-center">
-            </div>
-
-            <!-- Operational Buttons -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <button class="p-4 rounded-xl text-white flex flex-col justify-center items-center shadow-md bg-gradient-to-r from-red-600 to-red-500 active:scale-95" id="btnNextServer">
-                    <div class="text-sm font-black">2. Load Next Server</div>
-                    <div class="text-[10px] opacity-80 mt-1">Load credentials from database pool</div>
-                </button>
-
-                <button class="p-4 rounded-xl text-white flex flex-col justify-center items-center shadow-md bg-gradient-to-r from-green-600 to-green-500 active:scale-95" id="btnScanServer">
-                    <div class="text-sm font-black">3. Scan Portal Categories</div>
-                    <div class="text-[10px] opacity-80 mt-1">Analyze portal for available playlists</div>
-                </button>
-
-                <button class="p-4 rounded-xl text-white flex flex-col justify-center items-center shadow-md bg-gradient-to-r from-slate-700 to-slate-600 active:scale-95" id="btnClearInputs">
-                    <div class="text-sm font-black">4. Clear Workspace</div>
-                    <div class="text-[10px] opacity-80 mt-1">Reset inputs and scanned structures</div>
-                </button>
-
-                <button class="p-4 rounded-xl text-white flex flex-col justify-center items-center shadow-md bg-gradient-to-r from-violet-600 to-violet-500 active:scale-95 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed" id="btnConvert" disabled>
-                    <div class="text-sm font-black">5. Generate Credentials</div>
-                    <div class="text-[10px] opacity-80 mt-1">Convert to standard Xtream profile</div>
-                </button>
-
-                <button class="p-4 rounded-xl text-white flex flex-col justify-center items-center shadow-md bg-gradient-to-r from-orange-600 to-orange-500 active:scale-95 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed" id="btnDownloadM3u" disabled>
-                    <div class="text-sm font-black">6. Export M3U Playlist</div>
-                    <div class="text-[10px] opacity-80 mt-1">Export selected playlists directly</div>
-                </button>
-
-                <button class="p-4 rounded-xl text-white flex flex-col justify-center items-center shadow-md bg-gradient-to-r from-yellow-600 to-yellow-500 active:scale-95 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed" id="btnPreview" disabled>
-                    <div class="text-sm font-black">7. Load Active Media Lists</div>
-                    <div class="text-[10px] opacity-80 mt-1">Verify media listings for playback</div>
-                </button>
-            </div>
-
-            <!-- Category Mapping Interface -->
-            <div class="selection-boxes grid grid-cols-1 md:grid-cols-3 gap-6 mt-6" id="selectionContainer" style="display:none;">
-                <div class="bg-black/30 border border-white/5 rounded-2xl p-5 flex flex-col gap-3 max-h-[400px] overflow-y-auto">
-                    <h4 class="text-sky-400 text-sm font-black pb-2 border-b border-white/5 text-center">Live Channels (TV)</h4>
-                    <div id="liveCats" class="flex flex-col gap-2"></div>
-                </div>
-                <div class="bg-black/30 border border-white/5 rounded-2xl p-5 flex flex-col gap-3 max-h-[400px] overflow-y-auto">
-                    <h4 class="text-sky-400 text-sm font-black pb-2 border-b border-white/5 text-center">Video on Demand (VOD)</h4>
-                    <div id="vodCats" class="flex flex-col gap-2"></div>
-                </div>
-                <div class="bg-black/30 border border-white/5 rounded-2xl p-5 flex flex-col gap-3 max-h-[400px] overflow-y-auto">
-                    <h4 class="text-sky-400 text-sm font-black pb-2 border-b border-white/5 text-center">TV Series</h4>
-                    <div id="seriesCats" class="flex flex-col gap-2"></div>
+                <div class="input-wrapper relative flex w-full items-center">
+                    <input type="text" id="txtMac" placeholder="00:1a:79:00:00:00" class="w-full bg-black/40 border border-slate-700 rounded-xl text-slate-100 p-3.5 pr-20 text-sm font-bold outline-none transition focus:border-sky-500">
+                    <button class="copy-btn absolute right-2 bg-white/5 border border-white/10 text-slate-300 cursor-pointer py-1.5 px-3 rounded-lg text-xs transition hover:bg-sky-500 hover:text-white" onclick="copyValue('txtMac')">Copy</button>
                 </div>
             </div>
         </div>
 
-        <!-- Tab: Live TV Channels Grid -->
-        <div id="tab-live" class="workspace-tab flex flex-col gap-6 hidden">
-            <div class="border-b border-slate-800 pb-4">
-                <h1 class="text-2xl font-black text-white">LIVE CHANNELS (TV)</h1>
-                <p class="text-xs text-slate-400 mt-1">Select and play live television broadcasts below.</p>
+        <!-- Database Selection Row -->
+        <div class="input-group flex flex-col md:flex-row md:items-center gap-4 mb-8">
+            <button class="btn-main text-white py-3 px-6 rounded-xl text-center shadow-lg transition duration-200 bg-gradient-to-r from-teal-600 to-teal-500 md:w-1/2 flex flex-row items-center justify-center gap-3 active:scale-98" id="btnFetchDb">
+                <div class="btn-title text-sm font-black">1. Connect & Fetch Server Database</div>
+            </button>
+            <input type="text" id="dbStatusText" placeholder="Database not loaded" readonly class="w-full md:w-1/2 bg-black/40 border border-slate-700 rounded-xl text-slate-100 p-3.5 text-sm font-bold outline-none text-center">
+        </div>
+
+        <!-- Operational Buttons -->
+        <div class="action-buttons grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+            <button class="btn-main text-white p-4 rounded-xl flex flex-col justify-center items-center shadow-md transition duration-200 bg-gradient-to-r from-red-600 to-red-500 active:scale-95" id="btnNextServer">
+                <div class="btn-title text-sm font-black">2. Load Next Server</div>
+                <div class="btn-desc text-[11px] font-semibold opacity-85 mt-1">Load credentials from database pool</div>
+            </button>
+
+            <button class="btn-main text-white p-4 rounded-xl flex flex-col justify-center items-center shadow-md transition duration-200 bg-gradient-to-r from-green-600 to-green-500 active:scale-95" id="btnScanServer">
+                <div class="btn-title text-sm font-black">3. Scan Portal Categories</div>
+                <div class="btn-desc text-[11px] font-semibold opacity-85 mt-1">Analyze portal for available playlists</div>
+            </button>
+
+            <button class="btn-main text-white p-4 rounded-xl flex flex-col justify-center items-center shadow-md transition duration-200 bg-gradient-to-r from-slate-700 to-slate-600 active:scale-95" id="btnClearInputs">
+                <div class="btn-title text-sm font-black">4. Clear Workspace</div>
+                <div class="btn-desc text-[11px] font-semibold opacity-85 mt-1">Reset inputs and scanned structures</div>
+            </button>
+
+            <button class="btn-main text-white p-4 rounded-xl flex flex-col justify-center items-center shadow-md transition duration-200 bg-gradient-to-r from-violet-600 to-violet-500 active:scale-95 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none" id="btnConvert" disabled>
+                <div class="btn-title text-sm font-black">5. Generate Credentials</div>
+                <div class="btn-desc text-[11px] font-semibold opacity-85 mt-1">Convert to standard Xtream profile</div>
+            </button>
+
+            <button class="btn-main text-white p-4 rounded-xl flex flex-col justify-center items-center shadow-md transition duration-200 bg-gradient-to-r from-orange-600 to-orange-500 active:scale-95 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none" id="btnDownloadM3u" disabled>
+                <div class="btn-title text-sm font-black">6. Export M3U Playlist</div>
+                <div class="btn-desc text-[11px] font-semibold opacity-85 mt-1">Export selected playlists directly</div>
+            </button>
+
+            <button class="btn-main text-white p-4 rounded-xl flex flex-col justify-center items-center shadow-md transition duration-200 bg-gradient-to-r from-yellow-600 to-yellow-500 active:scale-95 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none" id="btnPreview" disabled>
+                <div class="btn-title text-sm font-black">7. Preview Stream Media</div>
+                <div class="btn-desc text-[11px] font-semibold opacity-85 mt-1">Test channels & VOD streams</div>
+            </button>
+        </div>
+
+        <!-- Category Mapping Interface -->
+        <div class="selection-boxes grid grid-cols-1 md:grid-cols-3 gap-6 mb-8" id="selectionContainer" style="display:none;">
+            <div class="content-box bg-black/30 border border-white/5 rounded-2xl p-5 flex flex-col gap-3 max-h-[400px] overflow-y-auto">
+                <h4 class="text-sky-400 text-sm font-black pb-2 border-b border-white/5 text-center">Live Channels (TV)</h4>
+                <div id="liveCats" class="flex flex-col gap-2"></div>
             </div>
-            <div id="modalLiveList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                <span class="text-slate-400 text-sm">Please load and scan a server, then click "Load Active Media Lists" under Configuration.</span>
+            <div class="content-box bg-black/30 border border-white/5 rounded-2xl p-5 flex flex-col gap-3 max-h-[400px] overflow-y-auto">
+                <h4 class="text-sky-400 text-sm font-black pb-2 border-b border-white/5 text-center">Video on Demand (VOD)</h4>
+                <div id="vodCats" class="flex flex-col gap-2"></div>
+            </div>
+            <div class="content-box bg-black/30 border border-white/5 rounded-2xl p-5 flex flex-col gap-3 max-h-[400px] overflow-y-auto">
+                <h4 class="text-sky-400 text-sm font-black pb-2 border-b border-white/5 text-center">TV Series</h4>
+                <div id="seriesCats" class="flex flex-col gap-2"></div>
             </div>
         </div>
 
-        <!-- Tab: Movies Grid (VOD) -->
-        <div id="tab-movies" class="workspace-tab flex flex-col gap-6 hidden">
-            <div class="border-b border-slate-800 pb-4">
-                <h1 class="text-2xl font-black text-white">MOVIES (VOD)</h1>
-                <p class="text-xs text-slate-400 mt-1">Select and stream VOD movie content below.</p>
+        <!-- Operations Console -->
+        <div class="log-wrapper bg-[#020617] border border-slate-800 rounded-2xl h-[250px] flex flex-col overflow-hidden">
+            <div class="log-header bg-[#0f172a] py-3 px-5 border-b border-white/5 flex items-center justify-between">
+                <div class="log-header-text text-xs text-slate-400 font-extrabold tracking-widest">SYSTEM PROCESS LOG</div>
             </div>
-            <div id="modalVodList" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                <span class="text-slate-400 text-sm">Please load and scan a server, then click "Load Active Media Lists" under Configuration.</span>
-            </div>
-        </div>
-
-        <!-- Tab: TV Shows Grid (Series) -->
-        <div id="tab-series" class="workspace-tab flex flex-col gap-6 hidden">
-            <div class="border-b border-slate-800 pb-4">
-                <h1 class="text-2xl font-black text-white">TV SERIES</h1>
-                <p class="text-xs text-slate-400 mt-1">Select a show to browse seasons and play episodes.</p>
-            </div>
-            <div id="modalSeriesList" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                <span class="text-slate-400 text-sm">Please load and scan a server, then click "Load Active Media Lists" under Configuration.</span>
+            <div class="log-content flex-1 p-4 overflow-y-auto font-mono text-xs leading-relaxed" id="logConsole">
+                <div class="log-item text-sky-400">> System initialized. Waiting for instruction.</div>
             </div>
         </div>
 
-        <!-- Tab: Logs -->
-        <div id="tab-logs" class="workspace-tab flex flex-col gap-6 hidden">
-            <div class="border-b border-slate-800 pb-4">
-                <h1 class="text-2xl font-black text-white">SYSTEM PROCESS LOGS</h1>
-                <p class="text-xs text-slate-400 mt-1">Monitor real-time system connection requests and logs.</p>
-            </div>
-            <div class="bg-[#020617] border border-slate-800 rounded-2xl h-[400px] flex flex-col overflow-hidden">
-                <div class="flex-1 p-4 overflow-y-auto font-mono text-xs leading-relaxed" id="logConsole">
-                    <div class="text-sky-400">> System initialized. Waiting for instruction.</div>
-                </div>
-            </div>
-        </div>
-    </main>
+    </div>
+</div>
 
-    <!-- Modal: Video Player Overlay -->
-    <div id="previewModal" class="modal-overlay fixed inset-0 w-full h-full bg-slate-950/95 backdrop-blur-md z-[1000] hidden items-center justify-center p-4">
-        <div class="modal-content bg-[#0f172a] border border-slate-800 rounded-2xl p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto flex flex-col gap-5 shadow-2xl">
-            <button class="bg-red-600 text-white font-extrabold text-sm py-2 px-4 rounded-lg cursor-pointer self-start active:scale-95 transition" id="btnClosePreview">Close & Stop Stream</button>
+<!-- Stream Preview Modal -->
+<div id="previewModal" class="modal-overlay fixed inset-0 w-full h-full bg-slate-950/95 backdrop-blur-md z-[1000] hidden items-center justify-center p-4">
+    <div class="modal-content bg-[#0f172a] border border-slate-800 rounded-2xl p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto flex flex-col gap-5 shadow-2xl">
+        <button class="sticky-close-btn bg-red-600 text-white font-extrabold text-sm py-2 px-4 rounded-lg cursor-pointer self-start active:scale-95 transition" id="btnClosePreview">Close & Stop Stream</button>
+        
+        <div class="player-wrapper bg-[#020617] border border-white/10 rounded-xl p-4">
+            <div class="video-title text-yellow-500 text-sm font-black mb-3" id="previewTitle">Select content below to load playback...</div>
+            <video id="videoPlayer" class="w-full max-h-[50vh] bg-black rounded-lg" controls autoplay></video>
             
-            <div class="player-wrapper bg-[#020617] border border-white/10 rounded-xl p-4">
-                <div class="video-title text-yellow-500 text-sm font-black mb-3" id="previewTitle">Select content below to load playback...</div>
-                <video id="videoPlayer" class="w-full max-h-[50vh] bg-black rounded-lg" controls autoplay></video>
-                
-                <!-- Quick Action Buttons for Stream -->
-                <div id="streamActions" class="mt-4 flex flex-wrap gap-2 hidden">
-                    <button id="btnCopyStreamUrl" class="bg-sky-500 hover:bg-sky-600 text-slate-950 font-bold text-xs py-2 px-4 rounded transition active:scale-95">Copy Raw Stream Link</button>
-                    <a id="btnExternalVlc" href="#" target="_blank" class="bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs py-2 px-4 rounded transition active:scale-95 inline-flex items-center">Play in External Player</a>
-                </div>
-                
-                <div id="mixedContentWarning" class="mt-3 text-xs text-yellow-400 font-semibold bg-yellow-500/10 border border-yellow-500/20 p-3 rounded-lg hidden">
-                    <span class="block mb-2 font-bold text-sm">⚠️ Browser Security Block Warning:</span>
-                    IPTV portals serve streams over insecure <strong class="text-white">HTTP</strong> connections using custom server ports. Web browsers block insecure streams on secure HTTPS pages by default.<br><br>
-                    <strong class="text-white">How to fix browser playback:</strong><br>
-                    1. Click the <strong class="text-white">Lock/Settings icon</strong> in your browser's address bar.<br>
-                    2. Click <strong class="text-white">Site Settings</strong>.<br>
-                    3. Locate <strong class="text-white">Insecure content</strong> and change it to <strong class="text-white">Allow</strong>.<br>
-                    4. Refresh the page to load the preview.<br><br>
-                    Alternatively, click <strong class="text-white">Copy Raw Stream Link</strong> or <strong class="text-white">Play in External Player</strong> to stream on VLC or PotPlayer.
-                </div>
+            <!-- Quick Action Buttons for Stream -->
+            <div id="streamActions" class="mt-4 flex flex-wrap gap-2 hidden">
+                <button id="btnCopyStreamUrl" class="bg-sky-500 hover:bg-sky-600 text-slate-950 font-bold text-xs py-2 px-4 rounded transition active:scale-95">Copy Raw Stream Link</button>
+                <a id="btnExternalVlc" href="#" target="_blank" class="bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs py-2 px-4 rounded transition active:scale-95 inline-flex items-center">Play in External Player</a>
+            </div>
+            
+            <!-- Explanatory UI Settings warning box -->
+            <div id="mixedContentWarning" class="mt-3 text-xs text-yellow-400 font-semibold bg-yellow-500/10 border border-yellow-500/20 p-3 rounded-lg hidden">
+                <span class="block mb-2 font-bold text-sm">⚠️ Browser Security Block Warning:</span>
+                IPTV portals serve streams over insecure <strong class="text-white">HTTP</strong> connections using custom server ports. Web browsers block insecure streams on secure HTTPS pages by default.<br><br>
+                <strong class="text-white">How to fix browser playback:</strong><br>
+                1. Click the <strong class="text-white">Lock/Tune Settings icon</strong> in your browser's address bar (next to the URL).<br>
+                2. Click <strong class="text-white">Site Settings</strong>.<br>
+                3. Locate <strong class="text-white">Insecure content</strong> and change it to <strong class="text-white">Allow</strong>.<br>
+                4. Refresh the page to load the preview.<br><br>
+                Alternatively, click <strong class="text-white">Copy Raw Stream Link</strong> or <strong class="text-white">Play in External Player</strong> to stream on VLC, PotPlayer, or an external player.
             </div>
         </div>
-    </div>
 
-    <!-- Modal: TV Series Episode Selector -->
-    <div id="seriesModal" class="modal-overlay fixed inset-0 w-full h-full bg-slate-950/95 backdrop-blur-md z-[1000] hidden items-center justify-center p-4">
-        <div class="modal-content bg-[#0f172a] border border-slate-800 rounded-2xl p-6 w-full max-w-4xl max-h-[85vh] overflow-y-auto flex flex-col gap-5 shadow-2xl">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-                <h3 class="text-lg font-black text-white" id="seriesModalTitle">TV Show Seasons & Episodes</h3>
-                <button class="bg-red-600 text-white font-bold text-xs py-1.5 px-3 rounded-lg active:scale-95" id="btnCloseSeries">Close</button>
-            </div>
-            <div id="seriesEpisodeList" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 py-2">
-                <span class="text-slate-400 text-sm">Fetching episodes list...</span>
-            </div>
-        </div>
+        <h4 class="text-sky-400 text-sm font-black tracking-wide">Live Streams Available</h4>
+        <div id="modalLiveList" class="items-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 py-2"></div>
+
+        <h4 class="text-sky-400 text-sm font-black tracking-wide">VOD Content Available</h4>
+        <div id="modalVodList" class="items-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 py-2"></div>
     </div>
+</div>
 
 <script>
     const CONFIG = {
-        WORKER: "https://stalker-proxy.onrender.com", // <--- Paste your Render URL here
+        WORKER: "https://stalker-proxy-cu5p.onrender.com",
         DB_URL: "https://raw.githubusercontent.com/djamekchaouadi/SERVER/main/1.txt"
     };
 
@@ -279,19 +224,6 @@
         consoleEl.appendChild(logLine);
         consoleEl.scrollTop = consoleEl.scrollHeight;
     }
-
-    // Interactive Dashboard Switch Tab Logic
-    window.switchTab = function(tabId) {
-        document.querySelectorAll('.workspace-tab').forEach(el => el.classList.add('hidden'));
-        document.getElementById(tabId).classList.remove('hidden');
-
-        document.querySelectorAll('.nav-tab').forEach(el => {
-            el.classList.remove('bg-sky-500', 'text-slate-950');
-            el.classList.add('text-slate-400', 'hover:bg-white/5', 'hover:text-white');
-        });
-        document.getElementById(`nav-${tabId}`).classList.remove('text-slate-400', 'hover:bg-white/5', 'hover:text-white');
-        document.getElementById(`nav-${tabId}`).classList.add('bg-sky-500', 'text-slate-950');
-    };
 
     // Toggle Language
     document.getElementById('btnLang').addEventListener('click', (e) => {
@@ -493,35 +425,27 @@
         if (!payload) return;
 
         pushLog("Fetching remote preview endpoints from source server index...", "info");
+        document.getElementById('previewModal').classList.remove('hidden');
+        document.getElementById('previewModal').classList.add('flex');
         document.getElementById('modalLiveList').innerHTML = '<span class="text-yellow-500 text-xs">Loading Channels...</span>';
         document.getElementById('modalVodList').innerHTML = '<span class="text-yellow-500 text-xs">Loading Movie Directory...</span>';
-        document.getElementById('modalSeriesList').innerHTML = '<span class="text-yellow-500 text-xs">Loading Series Directory...</span>';
 
         // Load Live elements
         if (payload.selections.l.length > 0) {
-            fetchContent('itv', payload.selections.l, payload, 'modalLiveList', 'live');
+            fetchContent('itv', payload.selections.l, payload, 'modalLiveList');
         } else {
             document.getElementById('modalLiveList').innerHTML = '<span class="text-slate-400 text-xs">No channel categories checked.</span>';
         }
 
         // Load VOD elements
         if (payload.selections.v.length > 0) {
-            fetchContent('vod', payload.selections.v, payload, 'modalVodList', 'vod');
+            fetchContent('vod', payload.selections.v, payload, 'modalVodList');
         } else {
             document.getElementById('modalVodList').innerHTML = '<span class="text-slate-400 text-xs">No VOD categories checked.</span>';
         }
-
-        // Load Series elements
-        if (payload.selections.s.length > 0) {
-            fetchContent('series', payload.selections.s, payload, 'modalSeriesList', 'series');
-        } else {
-            document.getElementById('modalSeriesList').innerHTML = '<span class="text-slate-400 text-xs">No Series categories checked.</span>';
-        }
-
-        pushLog("Categories processed. Switch tabs in the left sidebar to browse content.", "success");
     });
 
-    async function fetchContent(type, categories, payload, targetElementId, renderType) {
+    async function fetchContent(type, categories, payload, targetElementId) {
         try {
             const res = await fetch(`${CONFIG[activeEngine]}/api/get_items`, {
                 method: "POST",
@@ -533,34 +457,12 @@
             if (result.success && result.data.length > 0) {
                 let htmlContent = '';
                 result.data.forEach(item => {
-                    const fallbackLogo = item.logo || 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=200&auto=format&fit=crop';
-                    
-                    if (renderType === 'live') {
-                        // Horizontal Card Aspect Ratio for Channels
-                        htmlContent += `
-                            <div id="stream-${item.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center aspect-video hover:border-sky-500 hover:bg-sky-500/10 hover:scale-105" onclick="streamPlay('${payload.server}', '${payload.mac}', '${item.id}', 'itv', '${item.name.replace(/'/g, "\\'")}', 'stream-${item.id}')">
-                                <img src="${fallbackLogo}" class="max-w-[40px] max-h-[40px] mb-2 object-contain rounded" onerror="this.src='https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=200&auto=format&fit=crop'">
-                                <span class="text-[11px] font-bold text-slate-300 break-words leading-tight">${item.name}</span>
-                            </div>`;
-                    } else if (renderType === 'vod') {
-                        // Vertical Poster Card Aspect Ratio for VOD Movies
-                        htmlContent += `
-                            <div id="stream-${item.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl overflow-hidden cursor-pointer transition flex flex-col items-center justify-center aspect-[2/3] hover:border-sky-500 hover:scale-105" onclick="streamPlay('${payload.server}', '${payload.mac}', '${item.id}', 'vod', '${item.name.replace(/'/g, "\\'")}', 'stream-${item.id}')">
-                                <img src="${fallbackLogo}" class="w-full h-full object-cover rounded-t-xl" onerror="this.src='https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=200&auto=format&fit=crop'">
-                                <div class="p-2 w-full text-center bg-[#0b0f19]/90 shrink-0">
-                                    <span class="text-[10px] font-bold text-slate-300 line-clamp-1">${item.name}</span>
-                                </div>
-                            </div>`;
-                    } else if (renderType === 'series') {
-                        // Vertical Poster Card for TV Series Directories (Opens Episode Modal on Click)
-                        htmlContent += `
-                            <div class="bg-black/50 border border-slate-800 rounded-xl overflow-hidden cursor-pointer transition flex flex-col items-center justify-center aspect-[2/3] hover:border-sky-500 hover:scale-105" onclick="loadEpisodes('${payload.server}', '${payload.mac}', '${item.id}', '${item.name.replace(/'/g, "\\'")}')">
-                                <img src="${fallbackLogo}" class="w-full h-full object-cover rounded-t-xl" onerror="this.src='https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=200&auto=format&fit=crop'">
-                                <div class="p-2 w-full text-center bg-[#0b0f19]/90 shrink-0">
-                                    <span class="text-[10px] font-bold text-slate-300 line-clamp-1">${item.name}</span>
-                                </div>
-                            </div>`;
-                    }
+                    const img = item.logo ? `<img src="${item.logo}" class="max-w-[60px] max-h-[60px] mb-2 object-contain rounded" onerror="this.style.display='none'">` : '';
+                    htmlContent += `
+                        <div id="stream-${item.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[110px] hover:border-sky-500 hover:bg-sky-500/10 hover:scale-102" onclick="streamPlay('${payload.server}', '${payload.mac}', '${item.id}', '${type}', '${item.name.replace(/'/g, "\\'")}', 'stream-${item.id}')">
+                            ${img}
+                            <span class="text-[11px] font-bold text-slate-300 break-words leading-tight">${item.name}</span>
+                        </div>`;
                 });
                 document.getElementById(targetElementId).innerHTML = htmlContent;
             } else {
@@ -571,60 +473,15 @@
         }
     }
 
-    // Fetches TV Series Episodes inside a specific show folder
-    window.loadEpisodes = async function(server, mac, seriesId, seriesName) {
-        document.getElementById('seriesModalTitle').innerText = `${seriesName} - Episodes`;
-        document.getElementById('seriesModal').classList.remove('hidden');
-        document.getElementById('seriesModal').classList.add('flex');
-        document.getElementById('seriesEpisodeList').innerHTML = '<span class="text-yellow-500 text-xs">Loading episodes list...</span>';
-
-        try {
-            const res = await fetch(`${CONFIG.WORKER}/api/get_episodes`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ server, mac, seriesId })
-            });
-            const result = await res.json();
-
-            if (result.success && result.data.length > 0) {
-                let html = '';
-                result.data.forEach(ep => {
-                    const fallbackLogo = ep.logo || 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=200&auto=format&fit=crop';
-                    html += `
-                        <div id="ep-${ep.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl overflow-hidden cursor-pointer transition flex flex-col items-center justify-center aspect-video hover:border-yellow-500 hover:scale-105" onclick="streamPlay('${server}', '${mac}', '${ep.id}', 'vod', '${ep.name.replace(/'/g, "\\'")}', 'ep-${ep.id}')">
-                            <img src="${fallbackLogo}" class="w-full h-full object-cover rounded-t-xl" onerror="this.src='https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=200&auto=format&fit=crop'">
-                            <div class="p-2 w-full text-center bg-[#0b0f19]/90 shrink-0">
-                                <span class="text-[10px] font-bold text-slate-300 line-clamp-1">${ep.name}</span>
-                            </div>
-                        </div>`;
-                });
-                document.getElementById('seriesEpisodeList').innerHTML = html;
-            } else {
-                document.getElementById('seriesEpisodeList').innerHTML = '<span class="text-slate-400 text-xs">No episodes found.</span>';
-            }
-        } catch (e) {
-            document.getElementById('seriesEpisodeList').innerHTML = '<span class="text-slate-400 text-xs">Error compiling episodes.</span>';
-        }
-    };
-
-    // Close TV Series Episodes Modal
-    document.getElementById('btnCloseSeries').addEventListener('click', () => {
-        document.getElementById('seriesModal').classList.remove('flex');
-        document.getElementById('seriesModal').classList.add('hidden');
-    });
-
-    // Interactive Media Player Setup
+    // Defensive Playback Fallback Strategy Handlers
     let mpegtsPlayer = null;
     let hlsPlayer = null;
 
     window.streamPlay = function(server, mac, streamId, type, label, cardElementId) {
         document.getElementById('previewTitle').innerText = label;
+        // Point to proxy_stream without mode=proxy to let Cloudflare safely Redirect 302
         const proxyStream = `${CONFIG[activeEngine]}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${streamId}&type=${type}`;
         const videoElement = document.getElementById('videoPlayer');
-
-        // Reveal Player Modal
-        document.getElementById('previewModal').classList.remove('hidden');
-        document.getElementById('previewModal').classList.add('flex');
 
         // Reveal Quick Action controls & browser warning on stream click
         document.getElementById('streamActions').classList.remove('hidden');
