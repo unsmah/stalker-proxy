@@ -32,7 +32,7 @@
             <h2 class="text-xl font-bold tracking-wide">IPTV Utility Platform</h2>
         </div>
         <div class="top-actions flex gap-3">
-            <button class="bg-sky-500/10 border border-sky-500/30 text-sky-400 py-1.5 px-4 rounded-lg font-bold text-xs transition duration-200 hover:bg-sky-400 hover:text-slate-900" id="btnEngine">Server: CF Worker</button>
+            <button class="bg-sky-500/10 border border-sky-500/30 text-sky-400 py-1.5 px-4 rounded-lg font-bold text-xs transition duration-200 hover:bg-sky-400 hover:text-slate-900" id="btnEngine">Server: Render</button>
             <button class="bg-sky-500/10 border border-sky-500/30 text-sky-400 py-1.5 px-4 rounded-lg font-bold text-xs transition duration-200 hover:bg-sky-400 hover:text-slate-900" id="btnLang">Language: EN / AR</button>
         </div>
     </div>
@@ -175,12 +175,16 @@
 
         <h4 class="text-sky-400 text-sm font-black tracking-wide">VOD Content Available</h4>
         <div id="modalVodList" class="items-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 py-2"></div>
+
+        <h4 class="text-sky-400 text-sm font-black tracking-wide">TV Series Available</h4>
+        <div id="modalSeriesList" class="items-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 py-2"></div>
     </div>
 </div>
 
 <script>
+    // Configured Render Endpoint
     const CONFIG = {
-        WORKER: "https://stalker-proxy-cu5p.onrender.com",
+        WORKER: "https://stalker-proxy.onrender.com", // <--- Paste your Render URL here if it differs
         DB_URL: "https://raw.githubusercontent.com/djamekchaouadi/SERVER/main/1.txt"
     };
 
@@ -429,6 +433,7 @@
         document.getElementById('previewModal').classList.add('flex');
         document.getElementById('modalLiveList').innerHTML = '<span class="text-yellow-500 text-xs">Loading Channels...</span>';
         document.getElementById('modalVodList').innerHTML = '<span class="text-yellow-500 text-xs">Loading Movie Directory...</span>';
+        document.getElementById('modalSeriesList').innerHTML = '<span class="text-yellow-500 text-xs">Loading TV Show Directory...</span>';
 
         // Load Live elements
         if (payload.selections.l.length > 0) {
@@ -442,6 +447,13 @@
             fetchContent('vod', payload.selections.v, payload, 'modalVodList');
         } else {
             document.getElementById('modalVodList').innerHTML = '<span class="text-slate-400 text-xs">No VOD categories checked.</span>';
+        }
+
+        // Load Series elements
+        if (payload.selections.s.length > 0) {
+            fetchContent('series', payload.selections.s, payload, 'modalSeriesList');
+        } else {
+            document.getElementById('modalSeriesList').innerHTML = '<span class="text-slate-400 text-xs">No Series categories checked.</span>';
         }
     });
 
@@ -458,8 +470,9 @@
                 let htmlContent = '';
                 result.data.forEach(item => {
                     const img = item.logo ? `<img src="${item.logo}" class="max-w-[60px] max-h-[60px] mb-2 object-contain rounded" onerror="this.style.display='none'">` : '';
+                    const cmdEncoded = encodeURIComponent(item.cmd || '');
                     htmlContent += `
-                        <div id="stream-${item.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[110px] hover:border-sky-500 hover:bg-sky-500/10 hover:scale-102" onclick="streamPlay('${payload.server}', '${payload.mac}', '${item.id}', '${type}', '${item.name.replace(/'/g, "\\'")}', 'stream-${item.id}')">
+                        <div id="stream-${item.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[110px] hover:border-sky-500 hover:bg-sky-500/10 hover:scale-102" onclick="streamPlay('${payload.server}', '${payload.mac}', '${item.id}', '${type}', '${item.name.replace(/'/g, "\\'")}', 'stream-${item.id}', '${cmdEncoded}')">
                             ${img}
                             <span class="text-[11px] font-bold text-slate-300 break-words leading-tight">${item.name}</span>
                         </div>`;
@@ -477,10 +490,10 @@
     let mpegtsPlayer = null;
     let hlsPlayer = null;
 
-    window.streamPlay = function(server, mac, streamId, type, label, cardElementId) {
+    window.streamPlay = function(server, mac, streamId, type, label, cardElementId, cmdParam = '') {
         document.getElementById('previewTitle').innerText = label;
-        // Point to proxy_stream without mode=proxy to let Cloudflare safely Redirect 302
-        const proxyStream = `${CONFIG[activeEngine]}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${streamId}&type=${type}`;
+        // Point to proxy_stream with direct cmd parameter payload
+        const proxyStream = `${CONFIG[activeEngine]}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${streamId}&type=${type}&cmd=${cmdParam}`;
         const videoElement = document.getElementById('videoPlayer');
 
         // Reveal Quick Action controls & browser warning on stream click
