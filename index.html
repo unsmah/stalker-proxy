@@ -184,7 +184,7 @@
 <script>
     // Points default API engine to your target Render deployment
     const CONFIG = {
-        WORKER: "https://stalker-proxy.onrender.com", // <--- Paste your Render URL here
+        WORKER: "https://stalker-proxy-cu5p.onrender.com", // <--- Paste your Render URL here
         DB_URL: "https://raw.githubusercontent.com/djamekchaouadi/SERVER/main/1.txt"
     };
 
@@ -192,7 +192,6 @@
     let currentLanguage = 'en';
     let dbCollection = [];
     let scannedCategories = { live: [], vod: [], series: [] };
-    let cachedSeriesHtml = ''; // Caches local Series Show HTML for instantaneous back-navigation
 
     // Dictionary mappings for multilingual strings
     const langDict = {
@@ -471,28 +470,13 @@
                 let htmlContent = '';
                 result.data.forEach(item => {
                     const img = item.logo ? `<img src="${item.logo}" class="max-w-[60px] max-h-[60px] mb-2 object-contain rounded" onerror="this.style.display='none'">` : '';
-                    
-                    // If rendering parent TV Series Shows, bind onclick to loadEpisodes navigation instead of streamPlay
-                    if (type === 'series') {
-                        htmlContent += `
-                            <div id="show-${item.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[110px] hover:border-sky-500 hover:bg-sky-500/10 hover:scale-102" onclick="loadEpisodes('${payload.server}', '${payload.mac}', '${item.id}', '${item.name.replace(/'/g, "\\'")}')">
-                                ${img}
-                                <span class="text-[11px] font-bold text-slate-300 break-words leading-tight">${item.name}</span>
-                            </div>`;
-                    } else {
-                        htmlContent += `
-                            <div id="stream-${item.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[110px] hover:border-sky-500 hover:bg-sky-500/10 hover:scale-102" onclick="streamPlay('${payload.server}', '${payload.mac}', '${item.id}', '${type}', '${item.name.replace(/'/g, "\\'")}', 'stream-${item.id}', '${encodeURIComponent(item.cmd || '')}')">
-                                ${img}
-                                <span class="text-[11px] font-bold text-slate-300 break-words leading-tight">${item.name}</span>
-                            </div>`;
-                    }
+                    htmlContent += `
+                        <div id="stream-${item.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[110px] hover:border-sky-500 hover:bg-sky-500/10 hover:scale-102" onclick="streamPlay('${payload.server}', '${payload.mac}', '${item.id}', '${type}', '${item.name.replace(/'/g, "\\'")}', 'stream-${item.id}', '${encodeURIComponent(item.cmd || '')}')">
+                            ${img}
+                            <span class="text-[11px] font-bold text-slate-300 break-words leading-tight">${item.name}</span>
+                        </div>`;
                 });
                 document.getElementById(targetElementId).innerHTML = htmlContent;
-
-                // Cache original TV Shows HTML for quick, browser-level back-navigation
-                if (type === 'series') {
-                    cachedSeriesHtml = htmlContent;
-                }
             } else {
                 document.getElementById(targetElementId).innerHTML = '<span class="text-slate-400 text-xs">No stream indexes parsed.</span>';
             }
@@ -500,52 +484,6 @@
             document.getElementById(targetElementId).innerHTML = '<span class="text-slate-400 text-xs">Network fetch error compiling streams.</span>';
         }
     }
-
-    // Resolves and displays playable episodes for a clicked TV Show
-    window.loadEpisodes = async function(server, mac, showId, showName) {
-        const listContainer = document.getElementById('modalSeriesList');
-        listContainer.innerHTML = `<span class="text-yellow-500 text-xs">Loading episodes for ${showName}...</span>`;
-
-        try {
-            const res = await fetch(`${CONFIG.WORKER}/api/get_episodes`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ server, mac, showId })
-            });
-            const result = await res.json();
-
-            if (result.success && result.data.length > 0) {
-                // Prepend an intuitive "Back to TV Shows" button inside the rendering loop
-                let htmlContent = `
-                    <div class="item-card bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[110px] hover:bg-red-500/20" onclick="reloadSeriesList()">
-                        <span class="text-[11px] font-bold text-red-400 break-words leading-tight">⬅️ Back to TV Shows</span>
-                    </div>`;
-
-                result.data.forEach(ep => {
-                    const img = ep.logo ? `<img src="${ep.logo}" class="max-w-[60px] max-h-[60px] mb-2 object-contain rounded" onerror="this.style.display='none'">` : '';
-                    htmlContent += `
-                        <div id="stream-${ep.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[110px] hover:border-sky-500 hover:bg-sky-500/10 hover:scale-102" onclick="streamPlay('${server}', '${mac}', '${ep.id}', 'vod', '${showName.replace(/'/g, "\\'")} - ${ep.name.replace(/'/g, "\\'")}', 'stream-${ep.id}', '${encodeURIComponent(ep.cmd || '')}')">
-                            ${img}
-                            <span class="text-[11px] font-bold text-slate-300 break-words leading-tight">${ep.name}</span>
-                        </div>`;
-                });
-                listContainer.innerHTML = htmlContent;
-            } else {
-                listContainer.innerHTML = `
-                    <div class="col-span-full flex flex-col items-center gap-3">
-                        <span class="text-slate-400 text-xs">No episodes found for this show.</span>
-                        <button class="bg-red-600 hover:bg-red-700 text-white font-bold text-xs py-1.5 px-3 rounded transition" onclick="reloadSeriesList()">Back to TV Shows</button>
-                    </div>`;
-            }
-        } catch (e) {
-            listContainer.innerHTML = '<span class="text-red-400 text-xs">Error loading episodes.</span>';
-        }
-    };
-
-    // Restores original parent TV Shows HTML without triggering network requests
-    window.reloadSeriesList = function() {
-        document.getElementById('modalSeriesList').innerHTML = cachedSeriesHtml;
-    };
 
     // Defensive Playback Fallback Strategy Handlers
     let mpegtsPlayer = null;

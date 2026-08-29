@@ -78,14 +78,67 @@ function parseStalkerList(data) {
   return [];
 }
 
-// Unified Pagination Fetcher: Compiles all pages for any selected category
+// Compiles and flattens all pages of items (including nested series episodes)
 async function getCategoryItems(server, mac, type, catId, clientIp) {
   let allData = [];
 
   try {
+    // Specialized Series Episode Flattening logic
+    if (type === 'series') {
+      const firstPage = await callStalker(server, mac, 'series', 'get_ordered_list', { category: catId, p: 1 }, clientIp).catch(() => null);
+      if (!firstPage) return [];
+
+      const jsData = firstPage.js || {};
+      let shows = parseStalkerList(firstPage);
+
+      const totalItems = parseInt(jsData.total_items || 0, 10);
+      const maxPageItems = parseInt(jsData.max_page_items || shows.length || 0, 10);
+
+      // Compile remaining show pages
+      if (totalItems > maxPageItems && maxPageItems > 0) {
+        const totalPages = Math.ceil(totalItems / maxPageItems);
+        const pagePromises = [];
+
+        for (let page = 2; page <= totalPages; page++) {
+          pagePromises.push(
+            callStalker(server, mac, 'series', 'get_ordered_list', { category: catId, p: page }, clientIp)
+              .then(res => parseStalkerList(res))
+              .catch(() => [])
+          );
+        }
+
+        const pagesResults = await Promise.all(pagePromises);
+        pagesResults.forEach(pageItems => {
+          shows = [...shows, ...pageItems];
+        });
+      }
+
+      // Fetch all episodes for each parent show concurrently
+      const episodePromises = shows.map(async (show) => {
+        const showId = show.id;
+        const showName = show.name || show.title || "";
+        
+        const episodesPage = await callStalker(server, mac, 'vod', 'get_ordered_list', { movie_id: showId }, clientIp).catch(() => null);
+        const episodes = parseStalkerList(episodesPage);
+        
+        return episodes.map(ep => ({
+          id: ep.id || "",
+          name: `${showName} - ${ep.name || ep.title || ""}`,
+          logo: ep.logo || show.logo || "",
+          cmd: ep.cmd || `/media/${ep.id}.mpg`
+        }));
+      });
+      
+      const episodesResults = await Promise.all(episodePromises);
+      episodesResults.forEach(epList => {
+        allData = [...allData, ...epList];
+      });
+
+      return allData;
+    }
+
+    // Default ITV & VOD Category Fetching
     const paramKey = type === 'itv' ? 'genre' : 'category';
-    
-    // Fetch Page 1
     const firstPage = await callStalker(server, mac, type, 'get_ordered_list', { [paramKey]: catId, p: 1 }, clientIp).catch(() => null);
     if (!firstPage) return [];
 
@@ -101,7 +154,6 @@ async function getCategoryItems(server, mac, type, catId, clientIp) {
     const totalItems = parseInt(jsData.total_items || 0, 10);
     const maxPageItems = parseInt(jsData.max_page_items || firstPageItems.length || 0, 10);
 
-    // Fetch remaining pages if they exist
     if (totalItems > maxPageItems && maxPageItems > 0) {
       const totalPages = Math.ceil(totalItems / maxPageItems);
       const pagePromises = [];
@@ -227,30 +279,7 @@ app.post('/api/get_items', async (req, res) => {
   }
 });
 
-// 4. Get Episodes for a Specific TV Show (Container Resolution)
-app.post('/api/get_episodes', async (req, res) => {
-  const { server, mac, showId } = req.body;
-  const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
-
-  try {
-    // Stalker resolves show episodes using type=vod and movie_id=showId
-    const episodesPage = await callStalker(server, mac, 'vod', 'get_ordered_list', { movie_id: showId }, clientIp).catch(() => null);
-    const episodes = parseStalkerList(episodesPage);
-
-    const formatted = episodes.map(ep => ({
-      id: ep.id || "",
-      name: ep.name || ep.title || "",
-      logo: ep.logo || "",
-      cmd: ep.cmd || `/media/${ep.id}.mpg`
-    }));
-
-    res.json({ success: true, data: formatted });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 5. Proxy Stream (Redirects client, incorporating cmd parameter)
+// 4. Proxy Stream (Redirects client, incorporating cmd parameter)
 app.get('/proxy_stream', async (req, res) => {
   const { server, mac, stream_id, type, cmd } = req.query;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
@@ -265,7 +294,7 @@ app.get('/proxy_stream', async (req, res) => {
   }
 });
 
-// 6. Get M3U (Dynamic M3U compiler incorporating flattened series episodes)
+// 5. Get M3U (Dynamic M3U compiler incorporating flattened series episodes)
 app.get('/get.php', async (req, res) => {
   const { data } = req.query;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
@@ -305,23 +334,12 @@ app.get('/get.php', async (req, res) => {
     if (selections.s && selections.s.length > 0) {
       const promises = selections.s.map(catId => getCategoryItems(server, mac, 'series', catId, clientIp));
       const results = await Promise.all(promises);
-      
-      for (const shows of results) {
-        // Fetch all episodes for each show concurrently
-        const epPromises = shows.map(async (show) => {
-          const episodesPage = await callStalker(server, mac, 'vod', 'get_ordered_list', { movie_id: show.id }, clientIp).catch(() => null);
-          const episodes = parseStalkerList(episodesPage);
-          return { showName: show.name, episodes };
+      results.forEach(episodes => {
+        episodes.forEach(ep => {
+          m3uLines.push(`#EXTINF:-1 tvg-id="${ep.id}" tvg-name="${ep.name}" tvg-logo="${ep.logo || ''}" group-title="TV Series",${ep.name}`);
+          m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${ep.id}&type=vod&cmd=${encodeURIComponent(ep.cmd || '')}`);
         });
-        
-        const epsResults = await Promise.all(epPromises);
-        epsResults.forEach(res => {
-          res.episodes.forEach(ep => {
-            m3uLines.push(`#EXTINF:-1 tvg-id="${ep.id}" tvg-name="${res.showName} - ${ep.name || ep.title || ''}" tvg-logo="${ep.logo || ''}" group-title="TV Series",${res.showName} - ${ep.name || ep.title || ''}`);
-            m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${ep.id}&type=vod&cmd=${encodeURIComponent(ep.cmd || '')}`);
-          });
-        });
-      }
+      });
     }
 
     res.setHeader('Content-Type', 'application/x-mpegurl');
