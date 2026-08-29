@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IPTV Portal Workspace Dashboard</title>
+    <title>IPTV Portal Converter & Scanner</title>
     <!-- Fonts & External Libraries -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -24,153 +24,176 @@
 </head>
 <body class="bg-[#0b0f19] text-slate-100 font-cairo min-h-screen">
 
-<div class="w-full max-w-7xl mx-auto p-4 md:p-6 flex flex-col gap-6">
+<div id="app-wrapper" class="flex flex-col items-center p-4 md:p-6 pb-10 w-full max-w-7xl mx-auto">
 
-    <!-- Top Navigation Header -->
-    <header class="flex justify-between items-center border-b border-slate-800 pb-4 flex-wrap gap-4">
+    <!-- Top Navigation Bar -->
+    <div class="top-bar w-full flex justify-between items-center mb-6 flex-wrap gap-4 border-b border-slate-800 pb-4">
         <div>
-            <h1 class="text-2xl font-black tracking-wide text-white uppercase">STALKER WORKSPACE DASHBOARD</h1>
-            <p class="text-xs text-slate-400 mt-1">Convert Accounts, Compile Lists, and Explore Portals</p>
+            <h2 class="text-xl font-bold tracking-wide">IPTV Utility Platform</h2>
         </div>
-        <div class="flex gap-3">
-            <button class="bg-sky-500/10 border border-sky-500/30 text-sky-400 py-1.5 px-4 rounded-lg font-bold text-xs" id="btnEngine">Server: Render App</button>
-            <button class="bg-sky-500/10 border border-sky-500/30 text-sky-400 py-1.5 px-4 rounded-lg font-bold text-xs" id="btnLang">Language: EN / AR</button>
+        <div class="top-actions flex gap-3">
+            <button class="bg-sky-500/10 border border-sky-500/30 text-sky-400 py-1.5 px-4 rounded-lg font-bold text-xs transition duration-200 hover:bg-sky-400 hover:text-slate-900" id="btnEngine">Server: CF Worker</button>
+            <button class="bg-sky-500/10 border border-sky-500/30 text-sky-400 py-1.5 px-4 rounded-lg font-bold text-xs transition duration-200 hover:bg-sky-400 hover:text-slate-900" id="btnLang">Language: EN / AR</button>
         </div>
-    </header>
+    </div>
 
-    <!-- Main Dashboard Grid -->
-    <main class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <!-- Main Container -->
+    <div class="app-container w-full bg-[#0f172a] border border-slate-800 rounded-2xl p-6 md:p-8 shadow-2xl">
         
-        <!-- Left Panel (Settings & Operations - 4 Columns) -->
-        <section class="lg:col-span-4 flex flex-col gap-6 w-full">
+        <div class="header text-center mb-8">
+            <h1 class="text-2xl md:text-3xl font-black tracking-wide text-white uppercase">STALKER SCANNER & CONVERTER</h1>
+            <h3 class="text-sm mt-2 text-sky-400 font-bold">Parse Portals, Map Categories & Convert Accounts</h3>
+        </div>
+
+        <!-- Connection Inputs -->
+        <div class="inputs-container grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <!-- Portal URL -->
+            <div class="input-group flex flex-col gap-2 w-full">
+                <button class="btn-main text-white py-3 px-4 rounded-xl text-center shadow-lg transition duration-200 bg-gradient-to-r from-blue-600 to-blue-500 pointer-events-none opacity-90" disabled>
+                    <div class="btn-title text-sm font-black">STALKER PORTAL (URL)</div>
+                    <div class="btn-desc text-[11px] font-semibold opacity-85 mt-1">IPTV Portal Target Domain</div>
+                </button>
+                <div class="input-wrapper relative flex w-full items-center">
+                    <input type="text" id="txtPortal" placeholder="http://example.com:8080/c/" class="w-full bg-black/40 border border-slate-700 rounded-xl text-slate-100 p-3.5 pr-20 text-sm font-bold outline-none transition focus:border-sky-500">
+                    <button class="copy-btn absolute right-2 bg-white/5 border border-white/10 text-slate-300 cursor-pointer py-1.5 px-3 rounded-lg text-xs transition hover:bg-sky-500 hover:text-white" onclick="copyValue('txtPortal')">Copy</button>
+                </div>
+            </div>
+
+            <!-- MAC Address -->
+            <div class="input-group flex flex-col gap-2 w-full">
+                <button class="btn-main text-white py-3 px-4 rounded-xl text-center shadow-lg transition duration-200 bg-gradient-to-r from-blue-600 to-blue-500 pointer-events-none opacity-90" disabled>
+                    <div class="btn-title text-sm font-black">MAC ADDRESS</div>
+                    <div class="btn-desc text-[11px] font-semibold opacity-85 mt-1">Portal Authorized Device Identifier</div>
+                </button>
+                <div class="input-wrapper relative flex w-full items-center">
+                    <input type="text" id="txtMac" placeholder="00:1a:79:00:00:00" class="w-full bg-black/40 border border-slate-700 rounded-xl text-slate-100 p-3.5 pr-20 text-sm font-bold outline-none transition focus:border-sky-500">
+                    <button class="copy-btn absolute right-2 bg-white/5 border border-white/10 text-slate-300 cursor-pointer py-1.5 px-3 rounded-lg text-xs transition hover:bg-sky-500 hover:text-white" onclick="copyValue('txtMac')">Copy</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Database Selection Row -->
+        <div class="input-group flex flex-col md:flex-row md:items-center gap-4 mb-8">
+            <button class="btn-main text-white py-3 px-6 rounded-xl text-center shadow-lg transition duration-200 bg-gradient-to-r from-teal-600 to-teal-500 md:w-1/2 flex flex-row items-center justify-center gap-3 active:scale-98" id="btnFetchDb">
+                <div class="btn-title text-sm font-black">1. Connect & Fetch Server Database</div>
+            </button>
+            <input type="text" id="dbStatusText" placeholder="Database not loaded" readonly class="w-full md:w-1/2 bg-black/40 border border-slate-700 rounded-xl text-slate-100 p-3.5 text-sm font-bold outline-none text-center">
+        </div>
+
+        <!-- Operational Buttons -->
+        <div class="action-buttons grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+            <button class="btn-main text-white p-4 rounded-xl flex flex-col justify-center items-center shadow-md transition duration-200 bg-gradient-to-r from-red-600 to-red-500 active:scale-95" id="btnNextServer">
+                <div class="btn-title text-sm font-black">2. Load Next Server</div>
+                <div class="btn-desc text-[11px] font-semibold opacity-85 mt-1">Load credentials from database pool</div>
+            </button>
+
+            <button class="btn-main text-white p-4 rounded-xl flex flex-col justify-center items-center shadow-md transition duration-200 bg-gradient-to-r from-green-600 to-green-500 active:scale-95" id="btnScanServer">
+                <div class="btn-title text-sm font-black">3. Scan Portal Categories</div>
+                <div class="btn-desc text-[11px] font-semibold opacity-85 mt-1">Analyze portal for available playlists</div>
+            </button>
+
+            <button class="btn-main text-white p-4 rounded-xl flex flex-col justify-center items-center shadow-md transition duration-200 bg-gradient-to-r from-slate-700 to-slate-600 active:scale-95" id="btnClearInputs">
+                <div class="btn-title text-sm font-black">4. Clear Workspace</div>
+                <div class="btn-desc text-[11px] font-semibold opacity-85 mt-1">Reset inputs and scanned structures</div>
+            </button>
+
+            <button class="btn-main text-white p-4 rounded-xl flex flex-col justify-center items-center shadow-md transition duration-200 bg-gradient-to-r from-violet-600 to-violet-500 active:scale-95 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none" id="btnConvert" disabled>
+                <div class="btn-title text-sm font-black">5. Generate Credentials</div>
+                <div class="btn-desc text-[11px] font-semibold opacity-85 mt-1">Convert to standard Xtream profile</div>
+            </button>
+
+            <button class="btn-main text-white p-4 rounded-xl flex flex-col justify-center items-center shadow-md transition duration-200 bg-gradient-to-r from-orange-600 to-orange-500 active:scale-95 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none" id="btnDownloadM3u" disabled>
+                <div class="btn-title text-sm font-black">6. Export M3U Playlist</div>
+                <div class="btn-desc text-[11px] font-semibold opacity-85 mt-1">Export selected playlists directly</div>
+            </button>
+
+            <button class="btn-main text-white p-4 rounded-xl flex flex-col justify-center items-center shadow-md transition duration-200 bg-gradient-to-r from-yellow-600 to-yellow-500 active:scale-95 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none" id="btnPreview" disabled>
+                <div class="btn-title text-sm font-black">7. Preview Stream Media</div>
+                <div class="btn-desc text-[11px] font-semibold opacity-85 mt-1">Test channels & VOD streams</div>
+            </button>
+        </div>
+
+        <!-- Category Mapping Interface -->
+        <div class="selection-boxes grid grid-cols-1 md:grid-cols-3 gap-6 mb-8" id="selectionContainer" style="display:none;">
+            <div class="content-box bg-black/30 border border-white/5 rounded-2xl p-5 flex flex-col gap-3 max-h-[400px] overflow-y-auto">
+                <h4 class="text-sky-400 text-sm font-black pb-2 border-b border-white/5 text-center">Live Channels (TV)</h4>
+                <div id="liveCats" class="flex flex-col gap-2"></div>
+            </div>
+            <div class="content-box bg-black/30 border border-white/5 rounded-2xl p-5 flex flex-col gap-3 max-h-[400px] overflow-y-auto">
+                <h4 class="text-sky-400 text-sm font-black pb-2 border-b border-white/5 text-center">Video on Demand (VOD)</h4>
+                <div id="vodCats" class="flex flex-col gap-2"></div>
+            </div>
+            <div class="content-box bg-black/30 border border-white/5 rounded-2xl p-5 flex flex-col gap-3 max-h-[400px] overflow-y-auto">
+                <h4 class="text-sky-400 text-sm font-black pb-2 border-b border-white/5 text-center">TV Series</h4>
+                <div id="seriesCats" class="flex flex-col gap-2"></div>
+            </div>
+        </div>
+
+        <!-- Operations Console -->
+        <div class="log-wrapper bg-[#020617] border border-slate-800 rounded-2xl h-[250px] flex flex-col overflow-hidden">
+            <div class="log-header bg-[#0f172a] py-3 px-5 border-b border-white/5 flex items-center justify-between">
+                <div class="log-header-text text-xs text-slate-400 font-extrabold tracking-widest">SYSTEM PROCESS LOG</div>
+            </div>
+            <div class="log-content flex-1 p-4 overflow-y-auto font-mono text-xs leading-relaxed" id="logConsole">
+                <div class="log-item text-sky-400">> System initialized. Waiting for instruction.</div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Stream Preview Modal -->
+<div id="previewModal" class="modal-overlay fixed inset-0 w-full h-full bg-slate-950/95 backdrop-blur-md z-[1000] hidden items-center justify-center p-4">
+    <div class="modal-content bg-[#0f172a] border border-slate-800 rounded-2xl p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto flex flex-col gap-5 shadow-2xl">
+        <button class="sticky-close-btn bg-red-600 text-white font-extrabold text-sm py-2 px-4 rounded-lg cursor-pointer self-start active:scale-95 transition" id="btnClosePreview">Close & Stop Stream</button>
+        
+        <div class="player-wrapper bg-[#020617] border border-white/10 rounded-xl p-4">
+            <div class="video-title text-yellow-500 text-sm font-black mb-3" id="previewTitle">Select content below to load playback...</div>
+            <video id="videoPlayer" class="w-full max-h-[50vh] bg-black rounded-lg" controls autoplay></video>
             
-            <!-- Connection Card -->
-            <div class="bg-[#0f172a] border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col gap-4">
-                <h3 class="text-sm font-black text-sky-400 uppercase tracking-wider border-b border-white/5 pb-2">1. Portal Connection</h3>
-                
-                <div class="flex flex-col gap-1">
-                    <label class="text-[11px] font-bold text-slate-400">Portal URL</label>
-                    <input type="text" id="txtPortal" placeholder="http://example.com:8080/c/" class="bg-black/40 border border-slate-700 rounded-lg p-2.5 text-xs font-bold outline-none focus:border-sky-500">
-                </div>
-
-                <div class="flex flex-col gap-1">
-                    <label class="text-[11px] font-bold text-slate-400">MAC Address</label>
-                    <input type="text" id="txtMac" placeholder="00:1a:79:00:00:00" class="bg-black/40 border border-slate-700 rounded-lg p-2.5 text-xs font-bold outline-none focus:border-sky-500">
-                </div>
-
-                <div class="flex flex-col gap-2 mt-2">
-                    <button class="w-full bg-teal-600 hover:bg-teal-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition active:scale-95 shadow-md" id="btnFetchDb">
-                        Connect & Fetch Server Database
-                    </button>
-                    <input type="text" id="dbStatusText" placeholder="No Server Database Loaded" readonly class="bg-black/40 border border-slate-700 rounded-lg p-2 text-center text-xs font-bold text-slate-400">
-                </div>
+            <!-- Quick Action Buttons for Stream -->
+            <div id="streamActions" class="mt-4 flex flex-wrap gap-2 hidden">
+                <button id="btnCopyStreamUrl" class="bg-sky-500 hover:bg-sky-600 text-slate-950 font-bold text-xs py-2 px-4 rounded transition active:scale-95">Copy Raw Stream Link</button>
+                <a id="btnExternalVlc" href="#" target="_blank" class="bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs py-2 px-4 rounded transition active:scale-95 inline-flex items-center">Play in External Player</a>
             </div>
-
-            <!-- Operations Controller -->
-            <div class="bg-[#0f172a] border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col gap-3">
-                <h3 class="text-sm font-black text-sky-400 uppercase tracking-wider border-b border-white/5 pb-2">2. Action Controls</h3>
-                
-                <button class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition active:scale-95 shadow-sm" id="btnNextServer">
-                    Load Next Database Server
-                </button>
-
-                <button class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition active:scale-95 shadow-sm" id="btnScanServer">
-                    Scan Portal Categories
-                </button>
-
-                <button class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition active:scale-95 shadow-sm" id="btnClearInputs">
-                    Clear Input Fields
-                </button>
-
-                <button class="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition active:scale-95 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed" id="btnConvert" disabled>
-                    Generate Xtream Credentials
-                </button>
-
-                <button class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition active:scale-95 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed" id="btnDownloadM3u" disabled>
-                    Export M3U Playlist (With Episodes)
-                </button>
-            </div>
-
-            <!-- Log Console -->
-            <div class="bg-[#020617] border border-slate-800 rounded-2xl h-[200px] flex flex-col overflow-hidden">
-                <div class="bg-[#0f172a] py-2 px-4 border-b border-white/5 flex items-center justify-between">
-                    <span class="text-[10px] text-slate-400 font-extrabold tracking-widest">PROCESS LOG</span>
-                </div>
-                <div class="flex-1 p-3 overflow-y-auto font-mono text-[11px] leading-normal" id="logConsole">
-                    <div class="text-sky-400">> System initialized. Ready.</div>
-                </div>
-            </div>
-
-        </section>
-
-        <!-- Right Panel (Theatre Player, Category Mapping & Media Grid - 8 Columns) -->
-        <section class="lg:col-span-8 flex flex-col gap-6 w-full">
             
-            <!-- Theatre Stream Player -->
-            <div class="bg-[#020617] border border-slate-800 rounded-2xl p-4 shadow-lg flex flex-col gap-3">
-                <div class="text-yellow-500 text-xs font-black" id="previewTitle">Select content below to load playback...</div>
-                
-                <div class="aspect-video w-full bg-black rounded-lg overflow-hidden relative">
-                    <video id="videoPlayer" class="w-full h-full object-contain" controls autoplay></video>
-                </div>
-                
-                <!-- Quick Action Buttons -->
-                <div id="streamActions" class="flex flex-wrap gap-2 hidden border-t border-white/5 pt-3">
-                    <button id="btnCopyStreamUrl" class="bg-sky-500 hover:bg-sky-600 text-slate-950 font-bold text-xs py-2 px-4 rounded transition active:scale-95">Copy Raw Stream Link</button>
-                    <a id="btnExternalVlc" href="#" target="_blank" class="bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs py-2 px-4 rounded transition active:scale-95 inline-flex items-center">Play in VLC Player</a>
-                </div>
-                
-                <div id="mixedContentWarning" class="text-[11px] text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 p-3 rounded-lg hidden">
-                    <strong>⚠️ Browser Playback Warning:</strong> If the video does not load, click the <strong class="text-white">Lock/Tune icon</strong> in your browser's address bar, select <strong class="text-white">Site Settings</strong>, find <strong class="text-white">Insecure content</strong>, set it to <strong class="text-white">Allow</strong>, and refresh the page.
-                </div>
+            <!-- Explanatory UI Settings warning box -->
+            <div id="mixedContentWarning" class="mt-3 text-xs text-yellow-400 font-semibold bg-yellow-500/10 border border-yellow-500/20 p-3 rounded-lg hidden">
+                <span class="block mb-2 font-bold text-sm">⚠️ Browser Security Block Warning:</span>
+                IPTV portals serve streams over insecure <strong class="text-white">HTTP</strong> connections using custom server ports. Web browsers block insecure streams on secure HTTPS pages by default.<br><br>
+                <strong class="text-white">How to fix browser playback:</strong><br>
+                1. Click the <strong class="text-white">Lock/Tune Settings icon</strong> in your browser's address bar (next to the URL).<br>
+                2. Click <strong class="text-white">Site Settings</strong>.<br>
+                3. Locate <strong class="text-white">Insecure content</strong> and change it to <strong class="text-white">Allow</strong>.<br>
+                4. Refresh the page to load the preview.<br><br>
+                Alternatively, click <strong class="text-white">Copy Raw Stream Link</strong> or <strong class="text-white">Play in External Player</strong> to stream on VLC, PotPlayer, or an external player.
             </div>
+        </div>
 
-            <!-- Tabbed Media Explorer Section -->
-            <div class="bg-[#0f172a] border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col gap-4">
-                
-                <!-- Exploration Tabs -->
-                <div class="flex border-b border-white/5 pb-1 gap-2">
-                    <button class="tab-btn py-2 px-4 text-xs font-black uppercase tracking-wider text-sky-400 border-b-2 border-sky-400 transition" id="tabLive" onclick="switchTab('live')">Live TV</button>
-                    <button class="tab-btn py-2 px-4 text-xs font-black uppercase tracking-wider text-slate-400 border-b-2 border-transparent transition" id="tabVod" onclick="switchTab('vod')">Movies (VOD)</button>
-                    <button class="tab-btn py-2 px-4 text-xs font-black uppercase tracking-wider text-slate-400 border-b-2 border-transparent transition" id="tabSeries" onclick="switchTab('series')">TV Series</button>
-                </div>
+        <!-- Live Channels Section -->
+        <h4 class="text-sky-400 text-sm font-black tracking-wide">Live Streams Available</h4>
+        <div id="modalLiveList" class="items-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 py-2"></div>
 
-                <!-- Checked Category Selectors -->
-                <div class="flex flex-col gap-2 max-h-[160px] overflow-y-auto bg-black/30 rounded-xl p-3 border border-white/5" id="categoriesContainer">
-                    <span class="text-slate-400 text-xs text-center">Scan a portal to load categories...</span>
-                </div>
+        <!-- VOD Section -->
+        <h4 class="text-sky-400 text-sm font-black tracking-wide">VOD Content Available</h4>
+        <div id="modalVodList" class="items-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 py-2"></div>
 
-                <!-- Scanned Media Item Grid Explorer -->
-                <div class="flex flex-col gap-3">
-                    <div class="flex justify-between items-center border-b border-white/5 pb-2">
-                        <span class="text-xs font-bold text-slate-400">Media Catalog Items</span>
-                        <button class="bg-sky-500/10 border border-sky-500/30 text-sky-400 hover:bg-sky-500 hover:text-slate-950 font-bold text-xs py-1 px-3 rounded transition" id="btnExplore" onclick="exploreCheckedCategories()">Explore Checked Groups</button>
-                    </div>
-
-                    <!-- TV Series Episode Panel Container (Hidden by default) -->
-                    <div id="episodePanel" class="bg-black/40 border border-yellow-500/20 rounded-xl p-4 flex flex-col gap-2 hidden">
-                        <div class="flex justify-between items-center border-b border-white/5 pb-2">
-                            <span class="text-xs font-bold text-yellow-500" id="episodePanelTitle">Seasons & Episodes</span>
-                            <button class="text-xs text-slate-400 hover:text-white" onclick="closeEpisodePanel()">Back to Shows</button>
-                        </div>
-                        <div id="episodeList" class="flex flex-col gap-1.5 max-h-[160px] overflow-y-auto"></div>
-                    </div>
-
-                    <div id="mediaItemsGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 py-2 max-h-[300px] overflow-y-auto">
-                        <span class="text-slate-400 text-xs col-span-full text-center">No categories scanned or explored yet.</span>
-                    </div>
-                </div>
-
+        <!-- Series Section with Expandable Episodes -->
+        <h4 class="text-sky-400 text-sm font-black tracking-wide">TV Series (Click to view episodes)</h4>
+        <div id="modalSeriesList" class="items-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 py-2"></div>
+        
+        <!-- Episodes Display Area -->
+        <div id="episodesContainer" class="hidden mt-4">
+            <div class="flex items-center justify-between mb-3">
+                <h4 class="text-yellow-400 text-sm font-black tracking-wide" id="episodeTitle">Episodes</h4>
+                <button id="btnCloseEpisodes" class="bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs py-1.5 px-4 rounded transition active:scale-95">Close Episodes</button>
             </div>
-
-        </section>
-
-    </main>
-
+            <div id="episodesList" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 py-2"></div>
+        </div>
+    </div>
 </div>
 
 <script>
-    // Configured Server Target (Set to your Render Web Service URL)
     const CONFIG = {
         WORKER: "https://stalker-proxy-cu5p.onrender.com",
         DB_URL: "https://raw.githubusercontent.com/djamekchaouadi/SERVER/main/1.txt"
@@ -180,7 +203,7 @@
     let currentLanguage = 'en';
     let dbCollection = [];
     let scannedCategories = { live: [], vod: [], series: [] };
-    let currentActiveTab = 'live';
+    let currentSeriesContext = null; // Stores series ID and name for episode fetching
 
     // Dictionary mappings for multilingual strings
     const langDict = {
@@ -202,6 +225,7 @@
         }
     };
 
+    // Logging helper
     function pushLog(text, severity = 'normal') {
         const consoleEl = document.getElementById('logConsole');
         const logLine = document.createElement('div');
@@ -218,7 +242,7 @@
     }
 
     // Toggle Language
-    document.getElementById('btnLang').addEventListener('click', () => {
+    document.getElementById('btnLang').addEventListener('click', (e) => {
         currentLanguage = currentLanguage === 'en' ? 'ar' : 'en';
         pushLog(`Language changed to: ${currentLanguage.toUpperCase()}`, 'info');
     });
@@ -227,9 +251,7 @@
     document.getElementById('btnClearInputs').addEventListener('click', () => {
         document.getElementById('txtPortal').value = '';
         document.getElementById('txtMac').value = '';
-        document.getElementById('categoriesContainer').innerHTML = '<span class="text-slate-400 text-xs text-center">Scan a portal to load categories...</span>';
-        document.getElementById('mediaItemsGrid').innerHTML = '<span class="text-slate-400 text-xs col-span-full text-center">No categories scanned or explored yet.</span>';
-        closeEpisodePanel();
+        document.getElementById('selectionContainer').style.display = 'none';
         disableOptionalControls();
         pushLog("Workspace variables and fields successfully reset.", "info");
     });
@@ -271,7 +293,7 @@
     // Pick Next Server from Pool
     document.getElementById('btnNextServer').addEventListener('click', () => {
         if (dbCollection.length === 0) {
-            pushLog("Database pool empty. Run database fetch first.", "error");
+            pushLog("Database pool empty. Run Step 1 database fetch first.", "error");
             return;
         }
         const item = dbCollection.shift();
@@ -305,7 +327,9 @@
             }
 
             scannedCategories = data.categories;
-            switchTab(currentActiveTab);
+            populateCategoryUI();
+            
+            document.getElementById('selectionContainer').style.display = 'grid';
             enableOptionalControls();
             
             pushLog(langDict[currentLanguage].scanSuccess, 'success');
@@ -314,132 +338,23 @@
         }
     });
 
-    // Switch Category Selection Tabs (Live TV, Movies, Series)
-    window.switchTab = function(tabName) {
-        currentActiveTab = tabName;
-        
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.classList.remove('text-sky-400', 'border-sky-400');
-            btn.classList.add('text-slate-400', 'border-transparent');
-        });
-        document.getElementById(`tab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`).classList.add('text-sky-400', 'border-sky-400');
-
-        const container = document.getElementById('categoriesContainer');
-        container.innerHTML = '';
-
-        const sourceList = scannedCategories[tabName] || [];
-        if (sourceList.length === 0) {
-            container.innerHTML = '<span class="text-slate-400 text-xs text-center">No categories available. Please scan a portal.</span>';
-            return;
-        }
-
-        sourceList.forEach(item => {
-            container.innerHTML += `
-                <label class="checkbox-label flex items-center gap-3 bg-white/5 border border-transparent rounded-lg p-2 transition cursor-pointer hover:bg-sky-500/10 hover:text-white">
-                    <input type="checkbox" name="cat_${tabName}" value="${item.id}" class="accent-sky-500 w-4 h-4">
-                    <span class="text-xs font-bold">${item.title}</span>
-                </label>`;
-        });
-    };
-
-    // Explore Checked Categories on demand and load them into the main grid
-    window.exploreCheckedCategories = async () => {
-        const server = document.getElementById('txtPortal').value.trim().replace(/\/c\/?$/i, '').replace(/\/$/i, '');
-        const mac = document.getElementById('txtMac').value.trim();
-        if (!server || !mac) return;
-
-        const checkedBoxes = document.querySelectorAll(`input[name="cat_${currentActiveTab}"]:checked`);
-        const checkedIds = Array.from(checkedBoxes).map(cb => cb.value);
-
-        if (checkedIds.length === 0) {
-            pushLog("Please select at least one category to explore.", "warn");
-            return;
-        }
-
-        closeEpisodePanel();
-        const grid = document.getElementById('mediaItemsGrid');
-        grid.innerHTML = '<span class="text-yellow-500 text-xs col-span-full text-center">Fetching category catalog items...</span>';
-
-        try {
-            // Map 'series' tab exploration requests to 'series' type, otherwise keep the tab type
-            const fetchType = currentActiveTab === 'series' ? 'series' : currentActiveTab === 'vod' ? 'vod' : 'itv';
-
-            const res = await fetch(`${CONFIG[activeEngine]}/api/get_items`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ server, mac, type: fetchType, selectedCats: checkedIds })
+    function populateCategoryUI() {
+        const renderList = (sourceList, containerId, prefix) => {
+            const el = document.getElementById(containerId);
+            el.innerHTML = '';
+            sourceList.forEach(item => {
+                el.innerHTML += `
+                    <label class="checkbox-label flex items-center gap-3 bg-white/5 border border-transparent rounded-lg p-2 transition cursor-pointer hover:bg-sky-500/10 hover:text-white">
+                        <input type="checkbox" name="cat_${prefix}" value="${item.id}" class="accent-sky-500 w-4 h-4">
+                        ${item.title}
+                    </label>`;
             });
-            const result = await res.json();
+        };
 
-            if (result.success && result.data.length > 0) {
-                let htmlContent = '';
-                result.data.forEach(item => {
-                    const img = item.logo ? `<img src="${item.logo}" class="max-w-[50px] max-h-[50px] mb-2 object-contain rounded" onerror="this.style.display='none'">` : '';
-                    
-                    if (currentActiveTab === 'series') {
-                        // Clicking TV Shows fetches episodes dynamically
-                        htmlContent += `
-                            <div id="stream-${item.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[100px] hover:border-yellow-500 hover:bg-yellow-500/10 hover:scale-102" onclick="exploreSeriesEpisodes('${server}', '${mac}', '${item.id}', '${item.name.replace(/'/g, "\\'")}')">
-                                ${img}
-                                <span class="text-[10px] font-bold text-slate-300 break-words leading-tight">${item.name}</span>
-                            </div>`;
-                    } else {
-                        // Channels and VOD play directly
-                        htmlContent += `
-                            <div id="stream-${item.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[100px] hover:border-sky-500 hover:bg-sky-500/10 hover:scale-102" onclick="streamPlay('${server}', '${mac}', '${item.id}', '${fetchType}', '${item.name.replace(/'/g, "\\'")}', 'stream-${item.id}')">
-                                ${img}
-                                <span class="text-[10px] font-bold text-slate-300 break-words leading-tight">${item.name}</span>
-                            </div>`;
-                    }
-                });
-                grid.innerHTML = htmlContent;
-            } else {
-                grid.innerHTML = '<span class="text-slate-400 text-xs col-span-full text-center">No media items returned for selected categories.</span>';
-            }
-        } catch (e) {
-            grid.innerHTML = '<span class="text-red-400 text-xs col-span-full text-center">Error fetching category index items.</span>';
-        }
-    };
-
-    // Explore seasons & episodes of a TV Show (For Series)
-    window.exploreSeriesEpisodes = async (server, mac, seriesId, seriesName) => {
-        const epPanel = document.getElementById('episodePanel');
-        const epList = document.getElementById('episodeList');
-        
-        document.getElementById('episodePanelTitle').innerText = `${seriesName} - Episodes`;
-        epPanel.classList.remove('hidden');
-        epList.innerHTML = '<span class="text-yellow-500 text-[10px]">Fetching episodes...</span>';
-
-        try {
-            const res = await fetch(`${CONFIG[activeEngine]}/api/get_episodes`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ server, mac, seriesId })
-            });
-            const result = await res.json();
-
-            if (result.success && result.data.length > 0) {
-                let html = '';
-                result.data.forEach((ep, idx) => {
-                    html += `
-                        <div id="ep-${ep.id}" class="ep-row flex items-center justify-between bg-white/5 hover:bg-yellow-500/15 border border-transparent rounded-lg p-2 text-xs font-bold transition cursor-pointer" onclick="streamPlay('${server}', '${mac}', '${ep.id}', 'vod', '${ep.name.replace(/'/g, "\\'")}', 'ep-${ep.id}')">
-                            <span class="text-slate-300 leading-tight">${idx + 1}. ${ep.name}</span>
-                            <span class="text-[10px] text-yellow-500 uppercase tracking-widest font-black">Play</span>
-                        </div>`;
-                });
-                epList.innerHTML = html;
-            } else {
-                epList.innerHTML = '<span class="text-slate-400 text-[11px]">No episodes found for this show.</span>';
-            }
-        } catch (e) {
-            epList.innerHTML = '<span class="text-red-400 text-[11px]">Failed connecting to episodes directory.</span>';
-        }
-    };
-
-    window.closeEpisodePanel = () => {
-        document.getElementById('episodePanel').classList.add('hidden');
-        document.getElementById('episodeList').innerHTML = '';
-    };
+        renderList(scannedCategories.live, 'liveCats', 'live');
+        renderList(scannedCategories.vod, 'vodCats', 'vod');
+        renderList(scannedCategories.series, 'seriesCats', 'series');
+    }
 
     function getFormSelections() {
         const fetchCheckedValues = (name) => {
@@ -511,7 +426,7 @@
 
                 const dlUrl = `${CONFIG[activeEngine]}/get.php?username=${payload.mac}&password=${data.password}&type=m3u_plus&data=${encoded}`;
                 window.open(dlUrl, '_blank');
-                pushLog("M3U playlist with paginated episode files generated successfully.", "success");
+                pushLog("M3U payload link compiled and triggered in browser.", "success");
             } else {
                 throw new Error(data.error);
             }
@@ -520,13 +435,160 @@
         }
     });
 
-    // Interactive Media Player Setup (Direct redirect fallback logic)
+    // Stream Media Preview Interface
+    document.getElementById('btnPreview').addEventListener('click', async () => {
+        const payload = getFormSelections();
+        if (!payload) return;
+
+        pushLog("Fetching remote preview endpoints from source server index...", "info");
+        document.getElementById('previewModal').classList.remove('hidden');
+        document.getElementById('previewModal').classList.add('flex');
+        document.getElementById('modalLiveList').innerHTML = '<span class="text-yellow-500 text-xs">Loading Channels...</span>';
+        document.getElementById('modalVodList').innerHTML = '<span class="text-yellow-500 text-xs">Loading Movie Directory...</span>';
+        document.getElementById('modalSeriesList').innerHTML = '<span class="text-yellow-500 text-xs">Loading Series...</span>';
+        document.getElementById('episodesContainer').classList.add('hidden');
+
+        // Load Live elements
+        if (payload.selections.l.length > 0) {
+            fetchContent('itv', payload.selections.l, payload, 'modalLiveList', false);
+        } else {
+            document.getElementById('modalLiveList').innerHTML = '<span class="text-slate-400 text-xs">No channel categories checked.</span>';
+        }
+
+        // Load VOD elements
+        if (payload.selections.v.length > 0) {
+            fetchContent('vod', payload.selections.v, payload, 'modalVodList', false);
+        } else {
+            document.getElementById('modalVodList').innerHTML = '<span class="text-slate-400 text-xs">No VOD categories checked.</span>';
+        }
+
+        // Load Series elements
+        if (payload.selections.s.length > 0) {
+            fetchContent('series', payload.selections.s, payload, 'modalSeriesList', true);
+        } else {
+            document.getElementById('modalSeriesList').innerHTML = '<span class="text-slate-400 text-xs">No series categories checked.</span>';
+        }
+    });
+
+    // Close Episodes button
+    document.getElementById('btnCloseEpisodes').addEventListener('click', () => {
+        document.getElementById('episodesContainer').classList.add('hidden');
+        currentSeriesContext = null;
+    });
+
+    async function fetchContent(type, categories, payload, targetElementId, isSeries) {
+        try {
+            const res = await fetch(`${CONFIG[activeEngine]}/api/get_items`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ server: payload.server, mac: payload.mac, type: type, selectedCats: categories })
+            });
+            const result = await res.json();
+
+            if (result.success && result.data.length > 0) {
+                let htmlContent = '';
+                result.data.forEach(item => {
+                    const img = item.logo ? `<img src="${item.logo}" class="max-w-[60px] max-h-[60px] mb-2 object-contain rounded" onerror="this.style.display='none'">` : '';
+                    
+                    if (isSeries) {
+                        // Series cards - clickable to show episodes
+                        htmlContent += `
+                            <div id="series-${item.id}" class="series-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[110px] hover:border-sky-500 hover:bg-sky-500/10 hover:scale-102" 
+                                 onclick="fetchAndShowEpisodes('${payload.server}', '${payload.mac}', '${item.id}', '${item.name.replace(/'/g, "\\'")}')">
+                                ${img}
+                                <span class="text-[11px] font-bold text-slate-300 break-words leading-tight">${item.name}</span>
+                            </div>`;
+                    } else {
+                        // Regular content (Live or VOD)
+                        htmlContent += `
+                            <div id="stream-${item.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[110px] hover:border-sky-500 hover:bg-sky-500/10 hover:scale-102" 
+                                 onclick="streamPlay('${payload.server}', '${payload.mac}', '${item.id}', '${type}', '${item.name.replace(/'/g, "\\'")}', 'stream-${item.id}')">
+                                ${img}
+                                <span class="text-[11px] font-bold text-slate-300 break-words leading-tight">${item.name}</span>
+                            </div>`;
+                    }
+                });
+                document.getElementById(targetElementId).innerHTML = htmlContent;
+            } else {
+                const msg = isSeries ? 'No series parsed.' : 'No stream indexes parsed.';
+                document.getElementById(targetElementId).innerHTML = `<span class="text-slate-400 text-xs">${msg}</span>`;
+            }
+        } catch (e) {
+            document.getElementById(targetElementId).innerHTML = '<span class="text-slate-400 text-xs">Network fetch error compiling streams.</span>';
+        }
+    }
+
+    // Fetch and display episodes for a series
+    window.fetchAndShowEpisodes = async function(server, mac, seriesId, seriesName) {
+        pushLog(`Fetching episodes for series: ${seriesName}`, "info");
+        
+        // Store current series context
+        currentSeriesContext = { server, mac, seriesId, seriesName };
+        
+        const episodesContainer = document.getElementById('episodesContainer');
+        const episodesList = document.getElementById('episodesList');
+        const episodeTitle = document.getElementById('episodeTitle');
+        
+        episodeTitle.textContent = `${seriesName} - Episodes`;
+        episodesList.innerHTML = '<span class="text-yellow-500 text-xs">Loading episodes...</span>';
+        episodesContainer.classList.remove('hidden');
+
+        try {
+            const res = await fetch(`${CONFIG[activeEngine]}/api/get_episodes`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ server, mac, seriesId })
+            });
+            const data = await res.json();
+
+            if (data.success && data.seasons) {
+                let htmlContent = '';
+                // Sort seasons
+                const sortedSeasons = Object.keys(data.seasons).sort((a, b) => parseInt(a) - parseInt(b));
+                
+                sortedSeasons.forEach(seasonNum => {
+                    const episodes = data.seasons[seasonNum];
+                    htmlContent += `<div class="season-group col-span-full mb-2"><span class="text-yellow-400 font-bold text-sm">Season ${seasonNum}</span></div>`;
+                    
+                    // Sort episodes by episode number
+                    episodes.sort((a, b) => parseInt(a.episode_number) - parseInt(b.episode_number));
+                    
+                    episodes.forEach(ep => {
+                        const img = ep.logo ? `<img src="${ep.logo}" class="max-w-[60px] max-h-[60px] mb-2 object-contain rounded" onerror="this.style.display='none'">` : '';
+                        htmlContent += `
+                            <div class="episode-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[110px] hover:border-green-500 hover:bg-green-500/10 hover:scale-102"
+                                 onclick="streamPlay('${server}', '${mac}', '${ep.id}', 'series', '${seriesName} - S${seasonNum}E${ep.episode_number} - ${ep.name.replace(/'/g, "\\'")}', 'episode-${ep.id}', '${seasonNum}', '${ep.episode_number}')">
+                                ${img}
+                                <span class="text-[10px] font-bold text-slate-300 break-words leading-tight">S${seasonNum}E${ep.episode_number}</span>
+                                <span class="text-[10px] text-slate-400 break-words leading-tight">${ep.name}</span>
+                            </div>`;
+                    });
+                });
+                episodesList.innerHTML = htmlContent;
+                pushLog(`Loaded ${data.total_episodes} episodes for ${seriesName}`, "success");
+            } else {
+                episodesList.innerHTML = '<span class="text-slate-400 text-xs">No episodes found for this series.</span>';
+            }
+        } catch (e) {
+            episodesList.innerHTML = '<span class="text-slate-400 text-xs">Error loading episodes.</span>';
+            pushLog(`Error fetching episodes: ${e.message}`, "error");
+        }
+    };
+
+    // Defensive Playback Fallback Strategy Handlers
     let mpegtsPlayer = null;
     let hlsPlayer = null;
 
-    window.streamPlay = function(server, mac, streamId, type, label, cardElementId) {
+    window.streamPlay = function(server, mac, streamId, type, label, cardElementId, season = null, episode = null) {
         document.getElementById('previewTitle').innerText = label;
-        const proxyStream = `${CONFIG[activeEngine]}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${streamId}&type=${type}`;
+        
+        let proxyStream = `${CONFIG[activeEngine]}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${streamId}&type=${type}`;
+        
+        // Add season and episode parameters for series
+        if (type === 'series' && season && episode) {
+            proxyStream += `&season=${season}&episode=${episode}`;
+        }
+        
         const videoElement = document.getElementById('videoPlayer');
 
         // Reveal Quick Action controls & browser warning on stream click
@@ -541,24 +603,14 @@
         document.getElementById('btnExternalVlc').href = proxyStream;
 
         // Dynamic Active Card Highlight
-        document.querySelectorAll('.stream-card, .ep-row').forEach(el => {
-            el.classList.remove('border-yellow-500', 'bg-yellow-500/15', 'ring-2', 'ring-yellow-500/30', 'ring-yellow-500/40');
-            if (el.classList.contains('stream-card')) {
-                el.classList.add('border-slate-800', 'bg-black/50');
-            } else {
-                el.classList.remove('bg-yellow-500/15');
-                el.classList.add('bg-white/5');
-            }
+        document.querySelectorAll('.stream-card, .episode-card, .series-card').forEach(el => {
+            el.classList.remove('border-yellow-500', 'bg-yellow-500/15', 'ring-2', 'ring-yellow-500/30');
+            el.classList.add('border-slate-800', 'bg-black/50');
         });
         const activeCard = document.getElementById(cardElementId);
         if (activeCard) {
-            if (activeCard.classList.contains('stream-card')) {
-                activeCard.classList.remove('border-slate-800', 'bg-black/50');
-                activeCard.classList.add('border-yellow-500', 'bg-yellow-500/15', 'ring-2', 'ring-yellow-500/30');
-            } else {
-                activeCard.classList.remove('bg-white/5');
-                activeCard.classList.add('bg-yellow-500/15', 'ring-2', 'ring-yellow-500/40');
-            }
+            activeCard.classList.remove('border-slate-800', 'bg-black/50');
+            activeCard.classList.add('border-yellow-500', 'bg-yellow-500/15', 'ring-2', 'ring-yellow-500/30');
         }
 
         pushLog(`Initiating playback verification for stream: ${label}`, "success");
@@ -568,7 +620,7 @@
         try {
             if (mpegts.getFeatureList().mseLivePlayback) {
                 mpegtsPlayer = mpegts.createPlayer({
-                    type: type === 'vod' ? 'mp4' : 'm2ts',
+                    type: type === 'vod' || type === 'series' ? 'mp4' : 'm2ts',
                     isLive: type === 'itv',
                     url: proxyStream
                 });
@@ -576,7 +628,7 @@
                 mpegtsPlayer.load();
 
                 // Setup raw TS fallback trigger on load failure
-                mpegtsPlayer.on(mpegts.Events.ERROR, () => {
+                mpegtsPlayer.on(mpegts.Events.ERROR, (errType, errDetail) => {
                     pushLog(`Transport stream error detected. Falling back to HLS parser...`, "warn");
                     stopAndCleanupPlayers();
                     playFallbackHLS(proxyStream, videoElement);
@@ -624,8 +676,8 @@
     function playNativeFallback(url, videoElement) {
         pushLog("Mounting direct HTML5 hardware video decoder pipeline...", "info");
         videoElement.src = url;
-        videoElement.play().catch(() => {
-            pushLog("Playback failed across all local engine decoders. Verify browser mixed-content permissions.", "error");
+        videoElement.play().catch(e => {
+            pushLog("Playback failed across all local engine decoders. Verify portal connectivity.", "error");
         });
     }
 
@@ -647,6 +699,21 @@
         videoElement.load();
     }
 
+    // Modal Closing Operations
+    document.getElementById('btnClosePreview').addEventListener('click', () => {
+        document.getElementById('previewModal').classList.remove('flex');
+        document.getElementById('previewModal').classList.add('hidden');
+        document.getElementById('previewTitle').innerText = "Select content below to load playback...";
+        
+        // Hide Quick Action controls on close
+        document.getElementById('streamActions').classList.add('hidden');
+        document.getElementById('mixedContentWarning').classList.add('hidden');
+        document.getElementById('episodesContainer').classList.add('hidden');
+        
+        stopAndCleanupPlayers();
+        currentSeriesContext = null;
+    });
+
     // Helper Functions
     window.copyValue = function(elementId) {
         const element = document.getElementById(elementId);
@@ -657,14 +724,14 @@
     };
 
     function enableOptionalControls() {
-        ['btnConvert', 'btnDownloadM3u'].forEach(id => {
+        ['btnConvert', 'btnDownloadM3u', 'btnPreview'].forEach(id => {
             const btn = document.getElementById(id);
             btn.disabled = false;
         });
     }
 
     function disableOptionalControls() {
-        ['btnConvert', 'btnDownloadM3u'].forEach(id => {
+        ['btnConvert', 'btnDownloadM3u', 'btnPreview'].forEach(id => {
             const btn = document.getElementById(id);
             btn.disabled = true;
         });
