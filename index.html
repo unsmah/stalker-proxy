@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPTV Portal Converter & Scanner</title>
+    <!-- Fonts & External Libraries -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mpegts.js@latest/dist/mpegts.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        cairo: ['Cairo', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-[#0b0f19] text-slate-100 font-cairo min-h-screen">
+
+<div id="app-wrapper" class="flex flex-col items-center p-4 md:p-6 pb-10 w-full max-w-7xl mx-auto">
+
+    <!-- Top Navigation Bar -->
+    <div class="top-bar w-full flex justify-between items-center mb-6 flex-wrap gap-4 border-b border-slate-800 pb-4">
+        <div>
+            <h2 class="text-xl font-bold tracking-wide">IPTV Utility Platform</h2>
+        </div>
+        <div class="top-actions flex gap-3">
+            <button class="bg-sky-500/10 border border-sky-500/30 text-sky-400 py-1.5 px-4 rounded-lg font-bold text-xs transition duration-200 hover:bg-sky-400 hover:text-slate-900" id="btnEngine">Server: CF Worker</button>
+            <button class="bg-sky-500/10 border border-sky-500/30 text-sky-400 py-1.5 px-4 rounded-lg font-bold text-xs transition duration-200 hover:bg-sky-400 hover:text-slate-900" id="btnLang">Language: EN / AR</button>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="app-container w-full bg-[#0f172a] border border-slate-800 rounded-2xl p-6 md:p-8 shadow-2xl">
+        
+        <div class="header text-center mb-8">
+            <h1 class="text-2xl md:text-3xl font-black tracking-wide text-white uppercase">STALKER SCANNER & CONVERTER</h1>
+            <h3 class="text-sm mt-2 text-sky-400 font-bold">Parse Portals, Map Categories & Convert Accounts</h3>
+        </div>
+
+        <!-- Connection Inputs -->
+        <div class="inputs-container grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <!-- Portal URL -->
+            <div class="input-group flex flex-col gap-2 w-full">
+                <button class="btn-main text-white py-3 px-4 rounded-xl text-center shadow-lg transition duration-200 bg-gradient-to-r from-blue-600 to-blue-500 pointer-events-none opacity-90" disabled>
+                    <div class="btn-title text-sm font-black">STALKER PORTAL (URL)</div>
+                    <div class="btn-desc text-[11px] font-semibold opacity-85 mt-1">IPTV Portal Target Domain</div>
+                </button>
+                <div class="input-wrapper relative flex w-full items-center">
+                    <input type="text" id="txtPortal" placeholder="http://example.com:8080/c/" class="w-full bg-black/40 border border-slate-700 rounded-xl text-slate-100 p-3.5 pr-20 text-sm font-bold outline-none transition focus:border-sky-500">
+                    <button class="copy-btn absolute right-2 bg-white/5 border border-white/10 text-slate-300 cursor-pointer py-1.5 px-3 rounded-lg text-xs transition hover:bg-sky-500 hover:text-white" onclick="copyValue('txtPortal')">Copy</button>
+                </div>
+            </div>
+
+            <!-- MAC Address -->
+            <div class="input-group flex flex-col gap-2 w-full">
+                <button class="btn-main text-white py-3 px-4 rounded-xl text-center shadow-lg transition duration-200 bg-gradient-to-r from-blue-600 to-blue-500 pointer-events-none opacity-90" disabled>
+                    <div class="btn-title text-sm font-black">MAC ADDRESS</div>
+                    <div class="btn-desc text-[11px] font-semibold opacity-85 mt-1">Portal Authorized Device Identifier</div>
+                </button>
+                <div class="input-wrapper relative flex w-full items-center">
+                    <input type="text" id="txtMac" placeholder="00:1a:79:00:00:00" class="w-full bg-black/40 border border-slate-700 rounded-xl text-slate-100 p-3.5 pr-20 text-sm font-bold outline-none transition focus:border-sky-500">
+                    <button class="copy-btn absolute right-2 bg-white/5 border border-white/10 text-slate-300 cursor-pointer py-1.5 px-3 rounded-lg text-xs transition hover:bg-sky-500 hover:text-white" onclick="copyValue('txtMac')">Copy</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Database Selection Row -->
+        <div class="input-group flex flex-col md:flex-row md:items-center gap-4 mb-8">
+            <button class="btn-main text-white py-3 px-6 rounded-xl text-center shadow-lg transition duration-200 bg-gradient-to-r from-teal-600 to-teal-500 md:w-1/2 flex flex-row items-center justify-center gap-3 active:scale-98" id="btnFetchDb">
+                <div class="btn-title text-sm font-black">1. Connect & Fetch Server Database</div>
+            </button>
+            <input type="text" id="dbStatusText" placeholder="Database not loaded" readonly class="w-full md:w-1/2 bg-black/40 border border-slate-700 rounded-xl text-slate-100 p-3.5 text-sm font-bold outline-none text-center">
+        </div>
+
+        <!-- Operational Buttons -->
+        <div class="action-buttons grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+            <button class="btn-main text-white p-4 rounded-xl flex flex-col justify-center items-center shadow-md transition duration-200 bg-gradient-to-r from-red-600 to-red-500 active:scale-95" id="btnNextServer">
+                <div class="btn-title text-sm font-black">2. Load Next Server</div>
+                <div class="btn-desc text-[11px] font-semibold opacity-85 mt-1">Load credentials from database pool</div>
+            </button>
+
+            <button class="btn-main text-white p-4 rounded-xl flex flex-col justify-center items-center shadow-md transition duration-200 bg-gradient-to-r from-green-600 to-green-500 active:scale-95" id="btnScanServer">
+                <div class="btn-title text-sm font-black">3. Scan Portal Categories</div>
+                <div class="btn-desc text-[11px] font-semibold opacity-85 mt-1">Analyze portal for available playlists</div>
+            </button>
+
+            <button class="btn-main text-white p-4 rounded-xl flex flex-col justify-center items-center shadow-md transition duration-200 bg-gradient-to-r from-slate-700 to-slate-600 active:scale-95" id="btnClearInputs">
+                <div class="btn-title text-sm font-black">4. Clear Workspace</div>
+                <div class="btn-desc text-[11px] font-semibold opacity-85 mt-1">Reset inputs and scanned structures</div>
+            </button>
+
+            <button class="btn-main text-white p-4 rounded-xl flex flex-col justify-center items-center shadow-md transition duration-200 bg-gradient-to-r from-violet-600 to-violet-500 active:scale-95 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none" id="btnConvert" disabled>
+                <div class="btn-title text-sm font-black">5. Generate Credentials</div>
+                <div class="btn-desc text-[11px] font-semibold opacity-85 mt-1">Convert to standard Xtream profile</div>
+            </button>
+
+            <button class="btn-main text-white p-4 rounded-xl flex flex-col justify-center items-center shadow-md transition duration-200 bg-gradient-to-r from-orange-600 to-orange-500 active:scale-95 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none" id="btnDownloadM3u" disabled>
+                <div class="btn-title text-sm font-black">6. Export M3U Playlist</div>
+                <div class="btn-desc text-[11px] font-semibold opacity-85 mt-1">Export selected playlists directly</div>
+            </button>
+
+            <button class="btn-main text-white p-4 rounded-xl flex flex-col justify-center items-center shadow-md transition duration-200 bg-gradient-to-r from-yellow-600 to-yellow-500 active:scale-95 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none" id="btnPreview" disabled>
+                <div class="btn-title text-sm font-black">7. Preview Stream Media</div>
+                <div class="btn-desc text-[11px] font-semibold opacity-85 mt-1">Test channels & VOD streams</div>
+            </button>
+        </div>
+
+        <!-- Category Mapping Interface -->
+        <div class="selection-boxes grid grid-cols-1 md:grid-cols-3 gap-6 mb-8" id="selectionContainer" style="display:none;">
+            <div class="content-box bg-black/30 border border-white/5 rounded-2xl p-5 flex flex-col gap-3 max-h-[400px] overflow-y-auto">
+                <h4 class="text-sky-400 text-sm font-black pb-2 border-b border-white/5 text-center">Live Channels (TV)</h4>
+                <div id="liveCats" class="flex flex-col gap-2"></div>
+            </div>
+            <div class="content-box bg-black/30 border border-white/5 rounded-2xl p-5 flex flex-col gap-3 max-h-[400px] overflow-y-auto">
+                <h4 class="text-sky-400 text-sm font-black pb-2 border-b border-white/5 text-center">Video on Demand (VOD)</h4>
+                <div id="vodCats" class="flex flex-col gap-2"></div>
+            </div>
+            <div class="content-box bg-black/30 border border-white/5 rounded-2xl p-5 flex flex-col gap-3 max-h-[400px] overflow-y-auto">
+                <h4 class="text-sky-400 text-sm font-black pb-2 border-b border-white/5 text-center">TV Series</h4>
+                <div id="seriesCats" class="flex flex-col gap-2"></div>
+            </div>
+        </div>
+
+        <!-- Operations Console -->
+        <div class="log-wrapper bg-[#020617] border border-slate-800 rounded-2xl h-[250px] flex flex-col overflow-hidden">
+            <div class="log-header bg-[#0f172a] py-3 px-5 border-b border-white/5 flex items-center justify-between">
+                <div class="log-header-text text-xs text-slate-400 font-extrabold tracking-widest">SYSTEM PROCESS LOG</div>
+            </div>
+            <div class="log-content flex-1 p-4 overflow-y-auto font-mono text-xs leading-relaxed" id="logConsole">
+                <div class="log-item text-sky-400">> System initialized. Waiting for instruction.</div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Stream Preview Modal -->
+<div id="previewModal" class="modal-overlay fixed inset-0 w-full h-full bg-slate-950/95 backdrop-blur-md z-[1000] hidden items-center justify-center p-4">
+    <div class="modal-content bg-[#0f172a] border border-slate-800 rounded-2xl p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto flex flex-col gap-5 shadow-2xl">
+        <button class="sticky-close-btn bg-red-600 text-white font-extrabold text-sm py-2 px-4 rounded-lg cursor-pointer self-start active:scale-95 transition" id="btnClosePreview">Close & Stop Stream</button>
+        
+        <div class="player-wrapper bg-[#020617] border border-white/10 rounded-xl p-4">
+            <div class="video-title text-yellow-500 text-sm font-black mb-3" id="previewTitle">Select content below to load playback...</div>
+            <video id="videoPlayer" class="w-full max-h-[50vh] bg-black rounded-lg" controls autoplay></video>
+            
+            <!-- Quick Action Buttons for Stream -->
+            <div id="streamActions" class="mt-4 flex flex-wrap gap-2 hidden">
+                <button id="btnCopyStreamUrl" class="bg-sky-500 hover:bg-sky-600 text-slate-950 font-bold text-xs py-2 px-4 rounded transition active:scale-95">Copy Raw Stream Link</button>
+                <a id="btnExternalVlc" href="#" target="_blank" class="bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs py-2 px-4 rounded transition active:scale-95 inline-flex items-center">Play in External Player</a>
+            </div>
+            
+            <!-- Explanatory UI Settings warning box -->
+            <div id="mixedContentWarning" class="mt-3 text-xs text-yellow-400 font-semibold bg-yellow-500/10 border border-yellow-500/20 p-3 rounded-lg hidden">
+                <span class="block mb-2 font-bold text-sm">⚠️ Browser Security Block Warning:</span>
+                IPTV portals serve streams over insecure <strong class="text-white">HTTP</strong> connections using custom server ports. Web browsers block insecure streams on secure HTTPS pages by default.<br><br>
+                <strong class="text-white">How to fix browser playback:</strong><br>
+                1. Click the <strong class="text-white">Lock/Tune Settings icon</strong> in your browser's address bar (next to the URL).<br>
+                2. Click <strong class="text-white">Site Settings</strong>.<br>
+                3. Locate <strong class="text-white">Insecure content</strong> and change it to <strong class="text-white">Allow</strong>.<br>
+                4. Refresh the page to load the preview.<br><br>
+                Alternatively, click <strong class="text-white">Copy Raw Stream Link</strong> or <strong class="text-white">Play in External Player</strong> to stream on VLC, PotPlayer, or an external player.
+            </div>
+        </div>
+
+        <h4 class="text-sky-400 text-sm font-black tracking-wide">Live Streams Available</h4>
+        <div id="modalLiveList" class="items-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 py-2"></div>
+
+        <h4 class="text-sky-400 text-sm font-black tracking-wide">VOD Content Available</h4>
+        <div id="modalVodList" class="items-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 py-2"></div>
+    </div>
+</div>
+
+<script>
+    const CONFIG = {
+        WORKER: "https://stalker-proxy.onrender.com",
+        DB_URL: "https://raw.githubusercontent.com/djamekchaouadi/SERVER/main/1.txt"
+    };
+
+    let activeEngine = 'WORKER';
+    let currentLanguage = 'en';
+    let dbCollection = [];
+    let scannedCategories = { live: [], vod: [], series: [] };
+
+    // Dictionary mappings for multilingual strings
+    const langDict = {
+        en: {
+            scanSuccess: "Scan complete. Categories configured successfully.",
+            scanFailed: "Failed to connect or scan selected target portal.",
+            dbSuccess: "Loaded {count} active portal items to current workspace pool.",
+            dbError: "Could not successfully connect to the remote server directory.",
+            noSelection: "You must check at least one category mapping before conversion.",
+            ready: "Target accounts configured. Copy the data below to connect."
+        },
+        ar: {
+            scanSuccess: "اكتمل الفحص بنجاح. تم تعيين الباقات.",
+            scanFailed: "فشل الاتصال بالخادم المستهدف أو الفحص.",
+            dbSuccess: "تم جلب {count} خادم بنجاح في الذاكرة.",
+            dbError: "فشل الاتصال بقاعدة البيانات البعيدة.",
+            noSelection: "يجب اختيار باقة واحدة على الأقل قبل عملية التحويل.",
+            ready: "تم تجهيز البيانات بنجاح. انسخ البيانات للتشغيل."
+        }
+    };
+
+    // Logging helper
+    function pushLog(text, severity = 'normal') {
+        const consoleEl = document.getElementById('logConsole');
+        const logLine = document.createElement('div');
+        logLine.className = 'log-item py-1 border-b border-white/5';
+        
+        if (severity === 'success') logLine.classList.add('text-green-400');
+        else if (severity === 'error') logLine.classList.add('text-red-400');
+        else if (severity === 'warn') logLine.classList.add('text-yellow-400');
+        else if (severity === 'info') logLine.classList.add('text-sky-400');
+
+        logLine.innerHTML = `> ${text}`;
+        consoleEl.appendChild(logLine);
+        consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    // Toggle Language
+    document.getElementById('btnLang').addEventListener('click', (e) => {
+        currentLanguage = currentLanguage === 'en' ? 'ar' : 'en';
+        pushLog(`Language changed to: ${currentLanguage.toUpperCase()}`, 'info');
+    });
+
+    // Reset Form Fields
+    document.getElementById('btnClearInputs').addEventListener('click', () => {
+        document.getElementById('txtPortal').value = '';
+        document.getElementById('txtMac').value = '';
+        document.getElementById('selectionContainer').style.display = 'none';
+        disableOptionalControls();
+        pushLog("Workspace variables and fields successfully reset.", "info");
+    });
+
+    // Fetch Portal Database File
+    document.getElementById('btnFetchDb').addEventListener('click', async () => {
+        pushLog("Connecting to structural portal file repository...", "info");
+        dbCollection = [];
+        try {
+            const resp = await fetch(`${CONFIG.DB_URL}?nocache=${Date.now()}`);
+            if (!resp.ok) throw new Error("Fetch unsuccessful");
+            const textData = await resp.text();
+            const textLines = textData.split(/\r?\n/);
+            
+            let currentPanel = "";
+            for (let line of textLines) {
+                line = line.trim();
+                if (line.startsWith("PANEL")) {
+                    currentPanel = line.replace("PANEL", "").trim();
+                } else if (line.startsWith("MAC")) {
+                    let extractedMac = line.replace("MAC", "").trim();
+                    if (currentPanel && extractedMac) {
+                        dbCollection.push({ panel: currentPanel, mac: extractedMac });
+                    }
+                }
+            }
+
+            if (dbCollection.length > 0) {
+                document.getElementById('dbStatusText').value = `${dbCollection.length} Portals Cached`;
+                pushLog(langDict[currentLanguage].dbSuccess.replace('{count}', dbCollection.length), 'success');
+            } else {
+                throw new Error("No entities matched structural filters.");
+            }
+        } catch (err) {
+            pushLog(langDict[currentLanguage].dbError, 'error');
+        }
+    });
+
+    // Pick Next Server from Pool
+    document.getElementById('btnNextServer').addEventListener('click', () => {
+        if (dbCollection.length === 0) {
+            pushLog("Database pool empty. Run Step 1 database fetch first.", "error");
+            return;
+        }
+        const item = dbCollection.shift();
+        document.getElementById('txtPortal').value = item.panel;
+        document.getElementById('txtMac').value = item.mac;
+        document.getElementById('dbStatusText').value = `${dbCollection.length} Portals Remaining`;
+        pushLog(`Loaded target portal URL: ${item.panel}`, "info");
+        disableOptionalControls();
+    });
+
+    // Scan Target Portal Categories
+    document.getElementById('btnScanServer').addEventListener('click', async () => {
+        let server = document.getElementById('txtPortal').value.trim();
+        const mac = document.getElementById('txtMac').value.trim();
+
+        if (!server.startsWith("http") || !mac) {
+            pushLog("Please check inputs. Portal must start with http, and MAC cannot be empty.", "error");
+            return;
+        }
+
+        server = server.replace(/\/c\/?$/i, '').replace(/\/$/i, '');
+        pushLog(`Mapping API payload: Running remote portal scanner on: ${server}`, "info");
+
+        try {
+            const scanUrl = `${CONFIG[activeEngine]}/api/scan?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}`;
+            const response = await fetch(scanUrl);
+            const data = await response.json();
+
+            if (data.error || !data.success) {
+                throw new Error(data.error || "Remote scanner returned error");
+            }
+
+            scannedCategories = data.categories;
+            populateCategoryUI();
+            
+            document.getElementById('selectionContainer').style.display = 'grid';
+            enableOptionalControls();
+            
+            pushLog(langDict[currentLanguage].scanSuccess, 'success');
+        } catch (e) {
+            pushLog(langDict[currentLanguage].scanFailed, 'error');
+        }
+    });
+
+    function populateCategoryUI() {
+        const renderList = (sourceList, containerId, prefix) => {
+            const el = document.getElementById(containerId);
+            el.innerHTML = '';
+            sourceList.forEach(item => {
+                el.innerHTML += `
+                    <label class="checkbox-label flex items-center gap-3 bg-white/5 border border-transparent rounded-lg p-2 transition cursor-pointer hover:bg-sky-500/10 hover:text-white">
+                        <input type="checkbox" name="cat_${prefix}" value="${item.id}" class="accent-sky-500 w-4 h-4">
+                        ${item.title}
+                    </label>`;
+            });
+        };
+
+        renderList(scannedCategories.live, 'liveCats', 'live');
+        renderList(scannedCategories.vod, 'vodCats', 'vod');
+        renderList(scannedCategories.series, 'seriesCats', 'series');
+    }
+
+    function getFormSelections() {
+        const fetchCheckedValues = (name) => {
+            return Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(el => el.value);
+        };
+
+        const l = fetchCheckedValues('cat_live');
+        const v = fetchCheckedValues('cat_vod');
+        const s = fetchCheckedValues('cat_series');
+
+        if (l.length === 0 && v.length === 0 && s.length === 0) {
+            pushLog(langDict[currentLanguage].noSelection, 'warn');
+            return null;
+        }
+
+        const server = document.getElementById('txtPortal').value.trim().replace(/\/c\/?$/i, '').replace(/\/$/i, '');
+        const mac = document.getElementById('txtMac').value.trim();
+
+        return { server, mac, selections: { l, v, s } };
+    }
+
+    // Convert Account Button
+    document.getElementById('btnConvert').addEventListener('click', async () => {
+        const payload = getFormSelections();
+        if (!payload) return;
+
+        pushLog("Sending authorization requests to credential generator gateway...", "info");
+        try {
+            const res = await fetch(`${CONFIG[activeEngine]}/create_account`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ mac: payload.mac, server: payload.server, selections: payload.selections })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                pushLog("================ CONVERT SUCCESS ================", "success");
+                pushLog(`IPTV HOSTNAME: ${CONFIG[activeEngine].replace("https://", "http://")}`, "success");
+                pushLog(`USERNAME: ${payload.mac}`, "success");
+                pushLog(`PASSWORD: ${data.password}`, "success");
+                pushLog("=================================================", "success");
+                pushLog(langDict[currentLanguage].ready, "info");
+            } else {
+                throw new Error(data.error);
+            }
+        } catch (e) {
+            pushLog(`Execution error during credential mapping: ${e.message}`, "error");
+        }
+    });
+
+    // M3U Playlist Export Logic
+    document.getElementById('btnDownloadM3u').addEventListener('click', async () => {
+        const payload = getFormSelections();
+        if (!payload) return;
+
+        pushLog("Generating dynamic M3U configuration file...", "info");
+        try {
+            const res = await fetch(`${CONFIG[activeEngine]}/create_account`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ mac: payload.mac, server: payload.server, selections: payload.selections })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                const encodeSafeBase64 = (str) => btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+                const rawData = JSON.stringify({ mac: payload.mac, server: payload.server, selections: payload.selections });
+                const encoded = encodeSafeBase64(rawData);
+
+                const dlUrl = `${CONFIG[activeEngine]}/get.php?username=${payload.mac}&password=${data.password}&type=m3u_plus&data=${encoded}`;
+                window.open(dlUrl, '_blank');
+                pushLog("M3U payload link compiled and triggered in browser.", "success");
+            } else {
+                throw new Error(data.error);
+            }
+        } catch (e) {
+            pushLog(`Dynamic file compile failure: ${e.message}`, "error");
+        }
+    });
+
+    // Stream Media Preview Interface
+    document.getElementById('btnPreview').addEventListener('click', async () => {
+        const payload = getFormSelections();
+        if (!payload) return;
+
+        pushLog("Fetching remote preview endpoints from source server index...", "info");
+        document.getElementById('previewModal').classList.remove('hidden');
+        document.getElementById('previewModal').classList.add('flex');
+        document.getElementById('modalLiveList').innerHTML = '<span class="text-yellow-500 text-xs">Loading Channels...</span>';
+        document.getElementById('modalVodList').innerHTML = '<span class="text-yellow-500 text-xs">Loading Movie Directory...</span>';
+
+        // Load Live elements
+        if (payload.selections.l.length > 0) {
+            fetchContent('itv', payload.selections.l, payload, 'modalLiveList');
+        } else {
+            document.getElementById('modalLiveList').innerHTML = '<span class="text-slate-400 text-xs">No channel categories checked.</span>';
+        }
+
+        // Load VOD elements
+        if (payload.selections.v.length > 0) {
+            fetchContent('vod', payload.selections.v, payload, 'modalVodList');
+        } else {
+            document.getElementById('modalVodList').innerHTML = '<span class="text-slate-400 text-xs">No VOD categories checked.</span>';
+        }
+    });
+
+    async function fetchContent(type, categories, payload, targetElementId) {
+        try {
+            const res = await fetch(`${CONFIG[activeEngine]}/api/get_items`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ server: payload.server, mac: payload.mac, type: type, selectedCats: categories })
+            });
+            const result = await res.json();
+
+            if (result.success && result.data.length > 0) {
+                let htmlContent = '';
+                result.data.forEach(item => {
+                    const img = item.logo ? `<img src="${item.logo}" class="max-w-[60px] max-h-[60px] mb-2 object-contain rounded" onerror="this.style.display='none'">` : '';
+                    htmlContent += `
+                        <div id="stream-${item.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[110px] hover:border-sky-500 hover:bg-sky-500/10 hover:scale-102" onclick="streamPlay('${payload.server}', '${payload.mac}', '${item.id}', '${type}', '${item.name.replace(/'/g, "\\'")}', 'stream-${item.id}')">
+                            ${img}
+                            <span class="text-[11px] font-bold text-slate-300 break-words leading-tight">${item.name}</span>
+                        </div>`;
+                });
+                document.getElementById(targetElementId).innerHTML = htmlContent;
+            } else {
+                document.getElementById(targetElementId).innerHTML = '<span class="text-slate-400 text-xs">No stream indexes parsed.</span>';
+            }
+        } catch (e) {
+            document.getElementById(targetElementId).innerHTML = '<span class="text-slate-400 text-xs">Network fetch error compiling streams.</span>';
+        }
+    }
+
+    // Defensive Playback Fallback Strategy Handlers
+    let mpegtsPlayer = null;
+    let hlsPlayer = null;
+
+    window.streamPlay = function(server, mac, streamId, type, label, cardElementId) {
+        document.getElementById('previewTitle').innerText = label;
+        // Point to proxy_stream without mode=proxy to let Cloudflare safely Redirect 302
+        const proxyStream = `${CONFIG[activeEngine]}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${streamId}&type=${type}`;
+        const videoElement = document.getElementById('videoPlayer');
+
+        // Reveal Quick Action controls & browser warning on stream click
+        document.getElementById('streamActions').classList.remove('hidden');
+        document.getElementById('mixedContentWarning').classList.remove('hidden');
+
+        document.getElementById('btnCopyStreamUrl').onclick = function() {
+            navigator.clipboard.writeText(proxyStream).then(() => {
+                pushLog("Copied proxy stream URL to clipboard!", "success");
+            });
+        };
+        document.getElementById('btnExternalVlc').href = proxyStream;
+
+        // Dynamic Active Card Highlight
+        document.querySelectorAll('.stream-card').forEach(el => {
+            el.classList.remove('border-yellow-500', 'bg-yellow-500/15', 'ring-2', 'ring-yellow-500/30');
+            el.classList.add('border-slate-800', 'bg-black/50');
+        });
+        const activeCard = document.getElementById(cardElementId);
+        if (activeCard) {
+            activeCard.classList.remove('border-slate-800', 'bg-black/50');
+            activeCard.classList.add('border-yellow-500', 'bg-yellow-500/15', 'ring-2', 'ring-yellow-500/30');
+        }
+
+        pushLog(`Initiating playback verification for stream: ${label}`, "success");
+        stopAndCleanupPlayers();
+
+        // Tier 1 Playback: Try raw Transport Streams via mpegts.js parser
+        try {
+            if (mpegts.getFeatureList().mseLivePlayback) {
+                mpegtsPlayer = mpegts.createPlayer({
+                    type: type === 'vod' ? 'mp4' : 'm2ts',
+                    isLive: type === 'itv',
+                    url: proxyStream
+                });
+                mpegtsPlayer.attachMediaElement(videoElement);
+                mpegtsPlayer.load();
+
+                // Setup raw TS fallback trigger on load failure
+                mpegtsPlayer.on(mpegts.Events.ERROR, (errType, errDetail) => {
+                    pushLog(`Transport stream error detected. Falling back to HLS parser...`, "warn");
+                    stopAndCleanupPlayers();
+                    playFallbackHLS(proxyStream, videoElement);
+                });
+
+                mpegtsPlayer.play().catch(() => {
+                    stopAndCleanupPlayers();
+                    playFallbackHLS(proxyStream, videoElement);
+                });
+            } else {
+                playFallbackHLS(proxyStream, videoElement);
+            }
+        } catch (e) {
+            playFallbackHLS(proxyStream, videoElement);
+        }
+    };
+
+    // Tier 2 Playback: Fallback to HLS compilation via hls.js
+    function playFallbackHLS(url, videoElement) {
+        pushLog("Analyzing stream parameters via HLS manifest mapping...", "info");
+        if (Hls.isSupported()) {
+            hlsPlayer = new Hls({
+                enableWorker: true,
+                lowLatencyMode: true
+            });
+            hlsPlayer.loadSource(url);
+            hlsPlayer.attachMedia(videoElement);
+            
+            hlsPlayer.on(Hls.Events.ERROR, function (event, data) {
+                if (data.fatal) {
+                    pushLog("HLS decode failed. Reverting to direct browser native media pipeline...", "warn");
+                    hlsPlayer.destroy();
+                    hlsPlayer = null;
+                    playNativeFallback(url, videoElement);
+                }
+            });
+            
+            hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => videoElement.play());
+        } else {
+            playNativeFallback(url, videoElement);
+        }
+    }
+
+    // Tier 3 Playback: Fallback to direct HTML5 browser decoding engine
+    function playNativeFallback(url, videoElement) {
+        pushLog("Mounting direct HTML5 hardware video decoder pipeline...", "info");
+        videoElement.src = url;
+        videoElement.play().catch(e => {
+            pushLog("Playback failed across all local engine decoders. Verify portal connectivity.", "error");
+        });
+    }
+
+    function stopAndCleanupPlayers() {
+        const videoElement = document.getElementById('videoPlayer');
+        if (mpegtsPlayer) {
+            mpegtsPlayer.pause();
+            mpegtsPlayer.unload();
+            mpegtsPlayer.detachMediaElement();
+            mpegtsPlayer.destroy();
+            mpegtsPlayer = null;
+        }
+        if (hlsPlayer) {
+            hlsPlayer.destroy();
+            hlsPlayer = null;
+        }
+        videoElement.pause();
+        videoElement.removeAttribute('src');
+        videoElement.load();
+    }
+
+    // Modal Closing Operations
+    document.getElementById('btnClosePreview').addEventListener('click', () => {
+        document.getElementById('previewModal').classList.remove('flex');
+        document.getElementById('previewModal').classList.add('hidden');
+        document.getElementById('previewTitle').innerText = "Select content below to load playback...";
+        
+        // Hide Quick Action controls on close
+        document.getElementById('streamActions').classList.add('hidden');
+        document.getElementById('mixedContentWarning').classList.add('hidden');
+        
+        stopAndCleanupPlayers();
+    });
+
+    // Helper Functions
+    window.copyValue = function(elementId) {
+        const element = document.getElementById(elementId);
+        if (!element.value) return;
+        navigator.clipboard.writeText(element.value).then(() => {
+            pushLog(`Copied to Clipboard: ${element.value}`, "success");
+        });
+    };
+
+    function enableOptionalControls() {
+        ['btnConvert', 'btnDownloadM3u', 'btnPreview'].forEach(id => {
+            const btn = document.getElementById(id);
+            btn.disabled = false;
+        });
+    }
+
+    function disableOptionalControls() {
+        ['btnConvert', 'btnDownloadM3u', 'btnPreview'].forEach(id => {
+            const btn = document.getElementById(id);
+            btn.disabled = true;
+        });
+    }
+</script>
+</body>
+</html>
