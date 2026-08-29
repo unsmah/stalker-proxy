@@ -78,19 +78,30 @@ function parseStalkerList(data) {
   return [];
 }
 
-// Robust Pagination Fetcher with Fallback for Portals rejecting page parameters
+// Robust Pagination Fetcher (Now appends required Stalker parameters 'fav' and 'sortby')
 async function getCategoryItems(server, mac, type, catId, clientIp) {
   const paramKey = type === 'itv' ? 'genre' : 'category';
+  const sortby = type === 'itv' ? 'number' : 'added';
   let allData = [];
 
   try {
-    // 1. Try to fetch using standard page p=1 first
-    let pageData = await callStalker(server, mac, type, 'get_ordered_list', { [paramKey]: catId, p: 1 }, clientIp).catch(() => null);
+    // 1. Try to fetch with standard p=1 and required parameters
+    let pageData = await callStalker(server, mac, type, 'get_ordered_list', { 
+      [paramKey]: catId, 
+      fav: 0, 
+      sortby: sortby, 
+      p: 1 
+    }, clientIp).catch(() => null);
+    
     let pageItems = parseStalkerList(pageData);
 
-    // Defensive Fallback: If p=1 returned empty, request without the pagination parameter
+    // Defensive Fallback: If p=1 failed, request without the page parameter
     if (pageItems.length === 0) {
-      pageData = await callStalker(server, mac, type, 'get_ordered_list', { [paramKey]: catId }, clientIp).catch(() => null);
+      pageData = await callStalker(server, mac, type, 'get_ordered_list', { 
+        [paramKey]: catId, 
+        fav: 0, 
+        sortby: sortby 
+      }, clientIp).catch(() => null);
       pageItems = parseStalkerList(pageData);
     }
 
@@ -101,14 +112,19 @@ async function getCategoryItems(server, mac, type, catId, clientIp) {
     const totalItems = parseInt(jsData.total_items || 0, 10);
     const maxPageItems = parseInt(jsData.max_page_items || pageItems.length || 0, 10);
 
-    // 2. Fetch remaining pages concurrently if more exist
+    // 2. Fetch remaining pages concurrently
     if (totalItems > maxPageItems && maxPageItems > 0) {
       const totalPages = Math.ceil(totalItems / maxPageItems);
       const pagePromises = [];
 
       for (let page = 2; page <= totalPages; page++) {
         pagePromises.push(
-          callStalker(server, mac, type, 'get_ordered_list', { [paramKey]: catId, p: page }, clientIp)
+          callStalker(server, mac, type, 'get_ordered_list', { 
+            [paramKey]: catId, 
+            fav: 0, 
+            sortby: sortby, 
+            p: page 
+          }, clientIp)
             .then(res => parseStalkerList(res))
             .catch(() => [])
         );
