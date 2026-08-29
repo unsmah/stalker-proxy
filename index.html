@@ -175,17 +175,12 @@
 
         <h4 class="text-sky-400 text-sm font-black tracking-wide">VOD Content Available</h4>
         <div id="modalVodList" class="items-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 py-2"></div>
-
-        <!-- TV Series (Shows) Display Grid -->
-        <h4 class="text-sky-400 text-sm font-black tracking-wide">TV Series Shows Available</h4>
-        <div id="modalSeriesList" class="items-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 py-2"></div>
     </div>
 </div>
 
 <script>
-    // Points default API engine to your new Render deployment
     const CONFIG = {
-        WORKER: "https://stalker-proxy.onrender.com", // <--- Paste your Render URL here
+        WORKER: "https://stalker-proxy-cu5p.onrender.com",
         DB_URL: "https://raw.githubusercontent.com/djamekchaouadi/SERVER/main/1.txt"
     };
 
@@ -434,7 +429,6 @@
         document.getElementById('previewModal').classList.add('flex');
         document.getElementById('modalLiveList').innerHTML = '<span class="text-yellow-500 text-xs">Loading Channels...</span>';
         document.getElementById('modalVodList').innerHTML = '<span class="text-yellow-500 text-xs">Loading Movie Directory...</span>';
-        document.getElementById('modalSeriesList').innerHTML = '<span class="text-yellow-500 text-xs">Loading TV Series Shows...</span>';
 
         // Load Live elements
         if (payload.selections.l.length > 0) {
@@ -448,13 +442,6 @@
             fetchContent('vod', payload.selections.v, payload, 'modalVodList');
         } else {
             document.getElementById('modalVodList').innerHTML = '<span class="text-slate-400 text-xs">No VOD categories checked.</span>';
-        }
-
-        // Load Series elements
-        if (payload.selections.s.length > 0) {
-            fetchContent('series', payload.selections.s, payload, 'modalSeriesList');
-        } else {
-            document.getElementById('modalSeriesList').innerHTML = '<span class="text-slate-400 text-xs">No TV Series categories checked.</span>';
         }
     });
 
@@ -516,19 +503,6 @@
         if (activeCard) {
             activeCard.classList.remove('border-slate-800', 'bg-black/50');
             activeCard.classList.add('border-yellow-500', 'bg-yellow-500/15', 'ring-2', 'ring-yellow-500/30');
-        }
-
-        // Special Warning for Series Show cards click
-        if (type === 'series') {
-            pushLog(`[Series Notice] Selected: ${label}. Plays natively in Smarters/TiviMate.`, "warn");
-            document.getElementById('previewTitle').innerHTML = `⚠️ Stalker Series Notice: <span class="text-slate-300 font-normal">${label}</span>`;
-            document.getElementById('mixedContentWarning').innerHTML = `
-                <span class="block mb-2 font-bold text-sm text-yellow-400">⚠️ Stalker TV Series Notice:</span>
-                This card is a Series Show (e.g. Multi-Season Show), not a direct video file. Standard M3U streaming does not support playing multi-season shows directly.<br><br>
-                <strong class="text-white">The Solution:</strong> Please copy and use your generated <strong class="text-white">Xtream Codes Login</strong> (Username, Password, URL) inside IPTV apps like <strong class="text-white">TiviMate</strong> or <strong class="text-white">IPTV Smarters</strong>. These apps natively parse Stalker TV Series layouts, giving you a beautiful display with complete Seasons, Episodes, and Poster layouts!
-            `;
-            stopAndCleanupPlayers();
-            return;
         }
 
         pushLog(`Initiating playback verification for stream: ${label}`, "success");
