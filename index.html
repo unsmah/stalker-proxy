@@ -184,7 +184,7 @@
 <script>
     // Points default API engine to your target Render deployment
     const CONFIG = {
-        WORKER: "https://stalker-proxy-cu5p.onrender.com", // <--- Paste your Render URL here
+        WORKER: "https://stalker-proxy.onrender.com", // <--- Paste your Render URL here
         DB_URL: "https://raw.githubusercontent.com/djamekchaouadi/SERVER/main/1.txt"
     };
 
@@ -369,7 +369,7 @@
         const payload = getFormSelections();
         if (!payload) return;
 
-        pushLog("Sending authorization requests to credential generator gateway...", "info");
+        pushLog("Sending authorization requests to credential gateway...", "info");
         try {
             const res = await fetch(`${CONFIG[activeEngine]}/create_account`, {
                 method: "POST",
@@ -467,16 +467,7 @@
             const result = await res.json();
 
             if (result.success && result.data.length > 0) {
-                let htmlContent = '';
-                result.data.forEach(item => {
-                    const img = item.logo ? `<img src="${item.logo}" class="max-w-[60px] max-h-[60px] mb-2 object-contain rounded" onerror="this.style.display='none'">` : '';
-                    htmlContent += `
-                        <div id="stream-${item.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[110px] hover:border-sky-500 hover:bg-sky-500/10 hover:scale-102" onclick="streamPlay('${payload.server}', '${payload.mac}', '${item.id}', '${type}', '${item.name.replace(/'/g, "\\'")}', 'stream-${item.id}', '${encodeURIComponent(item.cmd || '')}')">
-                            ${img}
-                            <span class="text-[11px] font-bold text-slate-300 break-words leading-tight">${item.name}</span>
-                        </div>`;
-                });
-                document.getElementById(targetElementId).innerHTML = htmlContent;
+                renderItemsList(result.data, type, targetElementId, payload, categories);
             } else {
                 document.getElementById(targetElementId).innerHTML = '<span class="text-slate-400 text-xs">No stream indexes parsed.</span>';
             }
@@ -485,13 +476,79 @@
         }
     }
 
+    // Dynamic Item List Renderer
+    function renderItemsList(items, type, targetElementId, payload, originalCategories) {
+        let htmlContent = '';
+        
+        // Add a back-navigation option when inside an episode list
+        if (type === 'episodes') {
+            htmlContent += `
+                <div class="col-span-full mb-2">
+                    <button class="bg-sky-500/20 border border-sky-500/30 text-sky-400 py-1.5 px-4 rounded-lg font-bold text-xs hover:bg-sky-400 hover:text-slate-900 transition" onclick="fetchContent('series', [${originalCategories.map(c => `'${c}'`).join(',')}], ${JSON.stringify(payload).replace(/"/g, '&quot;')}, 'modalSeriesList')">
+                        ← Back to TV Series Shows
+                    </button>
+                </div>`;
+        }
+
+        items.forEach(item => {
+            const img = item.logo ? `<img src="${item.logo}" class="max-w-[60px] max-h-[60px] mb-2 object-contain rounded" onerror="this.style.display='none'">` : '';
+            
+            if (item.isSeries) {
+                // Renders parent TV Show container card
+                htmlContent += `
+                    <div id="series-${item.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[110px] hover:border-sky-500 hover:bg-sky-500/10 hover:scale-102" onclick="loadEpisodes('${item.id}', '${item.name.replace(/'/g, "\\'")}', '${targetElementId}')">
+                        ${img}
+                        <span class="text-[11px] font-bold text-slate-300 break-words leading-tight">${item.name}</span>
+                        <span class="text-[9px] text-sky-400 mt-1 font-semibold uppercase tracking-wider">TV Show</span>
+                    </div>`;
+            } else {
+                // Renders playable live channel, movie, or episode card
+                htmlContent += `
+                    <div id="stream-${item.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[110px] hover:border-sky-500 hover:bg-sky-500/10 hover:scale-102" onclick="streamPlay('${payload.server}', '${payload.mac}', '${item.id}', '${type}', '${item.name.replace(/'/g, "\\'")}', 'stream-${item.id}', '${encodeURIComponent(item.cmd || '')}')">
+                        ${img}
+                        <span class="text-[11px] font-bold text-slate-300 break-words leading-tight">${item.name}</span>
+                    </div>`;
+            }
+        });
+        
+        document.getElementById(targetElementId).innerHTML = htmlContent;
+    }
+
+    // Resolves and displays playable episodes for a parent show
+    window.loadEpisodes = async function(showId, showName, targetElementId) {
+        const payload = getFormSelections();
+        if (!payload) return;
+
+        document.getElementById(targetElementId).innerHTML = `<span class="text-yellow-500 text-xs">Loading episodes for ${showName}...</span>`;
+        try {
+            const res = await fetch(`${CONFIG.WORKER}/api/get_items`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ server: payload.server, mac: payload.mac, type: 'episodes', selectedCats: [showId] })
+            });
+            const result = await res.json();
+
+            if (result.success && result.data.length > 0) {
+                const activeSeriesCats = Array.from(document.querySelectorAll('input[name="cat_series"]:checked')).map(el => el.value);
+                renderItemsList(result.data, 'episodes', targetElementId, payload, activeSeriesCats);
+            } else {
+                document.getElementById(targetElementId).innerHTML = `
+                    <div class="col-span-full flex flex-col items-center gap-3">
+                        <span class="text-slate-400 text-xs">No episodes found for this show.</span>
+                        <button class="bg-sky-500/20 border border-sky-500/30 text-sky-400 py-1.5 px-4 rounded-lg font-bold text-xs" onclick="fetchContent('series', [${payload.selections.s.map(c => `'${c}'`).join(',')}], ${JSON.stringify(payload).replace(/"/g, '&quot;')}, 'modalSeriesList')">Back to Shows</button>
+                    </div>`;
+            }
+        } catch (e) {
+            document.getElementById(targetElementId).innerHTML = '<span class="text-slate-400 text-xs">Failed loading episodes.</span>';
+        }
+    };
+
     // Defensive Playback Fallback Strategy Handlers
     let mpegtsPlayer = null;
     let hlsPlayer = null;
 
     window.streamPlay = function(server, mac, streamId, type, label, cardElementId, passedCmd = '') {
         document.getElementById('previewTitle').innerText = label;
-        // Point to proxy_stream without mode=proxy to let Cloudflare safely Redirect 302
         const proxyStream = `${CONFIG[activeEngine]}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${streamId}&type=${type}&cmd=${passedCmd}`;
         const videoElement = document.getElementById('videoPlayer');
 
@@ -524,7 +581,7 @@
         try {
             if (mpegts.getFeatureList().mseLivePlayback) {
                 mpegtsPlayer = mpegts.createPlayer({
-                    type: type === 'vod' ? 'mp4' : 'm2ts',
+                    type: type === 'vod' || type === 'episodes' ? 'mp4' : 'm2ts',
                     isLive: type === 'itv',
                     url: proxyStream
                 });
