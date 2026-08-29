@@ -78,9 +78,26 @@ function parseStalkerList(data) {
   return [];
 }
 
+// Robust fallback categorizer for diverse Stalker portal variants
+async function getCategories(server, mac, type, clientIp) {
+  let data = null;
+  if (type === 'itv' || type === 'series') {
+    data = await callStalker(server, mac, type, 'get_genres', {}, clientIp).catch(() => null);
+    if (!parseStalkerList(data).length) {
+      data = await callStalker(server, mac, type, 'get_categories', {}, clientIp).catch(() => null);
+    }
+  } else { // VOD
+    data = await callStalker(server, mac, type, 'get_categories', {}, clientIp).catch(() => null);
+    if (!parseStalkerList(data).length) {
+      data = await callStalker(server, mac, type, 'get_genres', {}, clientIp).catch(() => null);
+    }
+  }
+  return data;
+}
+
 // Unified Pagination Fetcher: Compiles all pages for a category concurrently
 async function getCategoryItems(server, mac, type, catId, clientIp) {
-  const paramKey = type === 'itv' ? 'genre' : 'category';
+  const paramKey = (type === 'itv' || type === 'series') ? 'genre' : 'category';
   let allData = [];
 
   try {
@@ -120,112 +137,34 @@ async function getCategoryItems(server, mac, type, catId, clientIp) {
   return allData;
 }
 
-// Get series episodes for a specific series
-async function getSeriesEpisodes(server, mac, seriesId, clientIp) {
-  try {
-    const response = await callStalker(server, mac, 'series', 'get_episodes', { series_id: seriesId }, clientIp);
-    const episodes = parseStalkerList(response);
-    return episodes;
-  } catch (e) {
-    console.error(`Error fetching episodes for series ${seriesId}:`, e.message);
-    return [];
-  }
-}
-
-// Get series info (season data)
-async function getSeriesInfo(server, mac, seriesId, clientIp) {
-  try {
-    const response = await callStalker(server, mac, 'series', 'get_series_info', { series_id: seriesId }, clientIp);
-    return response;
-  } catch (e) {
-    console.error(`Error fetching series info for ${seriesId}:`, e.message);
-    return null;
-  }
-}
-
-async function resolveStreamLink(server, mac, streamId, type, clientIp, season = null, episode = null) {
+async function resolveStreamLink(server, mac, streamId, type, clientIp) {
   let resolvedUrl = '';
   
-  try {
-    if (type === 'itv') {
-      // Live TV
-      let cmd = `ffmpeg http://localhost/ch/${streamId}`;
-      let resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
-      resolvedUrl = resData?.js?.cmd || resData?.js || '';
-      
-      if (!resolvedUrl) {
-        cmd = `ffmpeg ${streamId}`;
-        resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
-        resolvedUrl = resData?.js?.cmd || resData?.js || '';
-      }
-    } else if (type === 'vod') {
-      // VOD Movies - try different cmd formats
-      let cmdFormats = [
-        `ffmpeg http://localhost/movie/${streamId}`,
-        `ffmpeg /media/${streamId}.mpg`,
-        `ffmpeg /media/${streamId}.mkv`,
-        `ffmpeg /movie/${streamId}`,
-        `/media/${streamId}.mpg`,
-        `/media/${streamId}.mkv`
-      ];
-      
-      for (let cmd of cmdFormats) {
-        const resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
-        if (resData?.js?.cmd || resData?.js) {
-          resolvedUrl = resData?.js?.cmd || resData?.js || '';
-          break;
-        }
-      }
-    } else if (type === 'series') {
-      // Series Episode
-      if (season && episode) {
-        // Try different cmd formats for series episodes
-        let cmdFormats = [
-          `ffmpeg http://localhost/series/${streamId}/${season}/${episode}`,
-          `ffmpeg /series/${streamId}/${season}/${episode}.mpg`,
-          `ffmpeg /media/${streamId}_${season}_${episode}.mpg`,
-          `/series/${streamId}/${season}/${episode}.mpg`,
-          `/media/${streamId}_${season}_${episode}.mpg`
-        ];
-        
-        for (let cmd of cmdFormats) {
-          const resData = await callStalker(server, mac, 'series', 'create_link', { cmd }, clientIp).catch(() => null);
-          if (resData?.js?.cmd || resData?.js) {
-            resolvedUrl = resData?.js?.cmd || resData?.js || '';
-            break;
-          }
-        }
-      } else {
-        // Try without season/episode (some portals use just the stream ID)
-        let cmdFormats = [
-          `ffmpeg http://localhost/series/${streamId}`,
-          `ffmpeg /series/${streamId}.mpg`,
-          `/series/${streamId}.mpg`
-        ];
-        
-        for (let cmd of cmdFormats) {
-          const resData = await callStalker(server, mac, 'series', 'create_link', { cmd }, clientIp).catch(() => null);
-          if (resData?.js?.cmd || resData?.js) {
-            resolvedUrl = resData?.js?.cmd || resData?.js || '';
-            break;
-          }
-        }
-      }
-    }
+  let cmd = type === 'itv' ? `ffmpeg http://localhost/ch/${streamId}` : `/media/${streamId}.mpg`;
+  let resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
+  resolvedUrl = resData?.js?.cmd || resData?.js || '';
 
-    if (resolvedUrl) {
-      resolvedUrl = resolvedUrl.replace(/^ffmpeg\s+/, '').trim();
-    }
-  } catch (e) {
-    console.error(`Error resolving stream for ${streamId}:`, e.message);
+  if (!resolvedUrl) {
+    cmd = type === 'itv' ? `ffmpeg ${streamId}` : `${streamId}`;
+    resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
+    resolvedUrl = resData?.js?.cmd || resData?.js || '';
   }
-  
+
+  if (!resolvedUrl && (type === 'vod' || type === 'series')) {
+    cmd = `/media/${streamId}.mkv`;
+    resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
+    resolvedUrl = resData?.js?.cmd || resData?.js || '';
+  }
+
+  if (resolvedUrl) {
+    resolvedUrl = resolvedUrl.replace(/^ffmpeg\s+/, '').trim();
+  }
   return resolvedUrl;
 }
 
 // --- Endpoints ---
 
-// 1. Scan Categories
+// 1. Scan Categories (With flexible mapping protection)
 app.get('/api/scan', async (req, res) => {
   const { server, mac } = req.query;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
@@ -234,9 +173,9 @@ app.get('/api/scan', async (req, res) => {
 
   try {
     const [liveData, vodData, seriesData] = await Promise.all([
-      callStalker(server, mac, 'itv', 'get_genres', {}, clientIp).catch(() => null),
-      callStalker(server, mac, 'vod', 'get_categories', {}, clientIp).catch(() => null),
-      callStalker(server, mac, 'series', 'get_categories', {}, clientIp).catch(() => null)
+      getCategories(server, mac, 'itv', clientIp),
+      getCategories(server, mac, 'vod', clientIp),
+      getCategories(server, mac, 'series', clientIp)
     ]);
 
     res.json({
@@ -273,16 +212,9 @@ app.post('/api/get_items', async (req, res) => {
     results.forEach(items => {
       items.forEach(item => {
         allItems.push({
-          id: item.id || item.series_id || "",
+          id: item.id || "",
           name: item.name || item.title || "",
-          logo: item.logo || item.tv_genre_logo || "",
-          // Store additional metadata for series
-          season: item.season || null,
-          episode: item.episode || null,
-          series_id: item.series_id || null,
-          director: item.director || null,
-          actors: item.actors || null,
-          description: item.description || null
+          logo: item.logo || item.tv_genre_logo || ""
         });
       });
     });
@@ -293,43 +225,20 @@ app.post('/api/get_items', async (req, res) => {
   }
 });
 
-// 4. Get Series Episodes
+// 4. Get Episodes for a TV Show (New)
 app.post('/api/get_episodes', async (req, res) => {
-  const { server, mac, seriesId } = req.body;
+  const { server, mac, type, seriesId } = req.body;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
 
-  if (!server || !mac || !seriesId) {
-    return res.status(400).json({ error: 'Missing required parameters' });
-  }
-
   try {
-    const episodes = await getSeriesEpisodes(server, mac, seriesId, clientIp);
-    const seriesInfo = await getSeriesInfo(server, mac, seriesId, clientIp);
-    
-    // Group episodes by season
-    const seasons = {};
-    episodes.forEach(ep => {
-      const seasonNum = ep.season || ep.season_number || '1';
-      if (!seasons[seasonNum]) {
-        seasons[seasonNum] = [];
-      }
-      seasons[seasonNum].push({
-        id: ep.id || ep.episode_id || '',
-        name: ep.name || ep.title || `Episode ${ep.episode_number || ''}`,
-        episode_number: ep.episode_number || ep.episode || '',
-        season: seasonNum,
-        logo: ep.logo || ep.screenshot_uri || '',
-        description: ep.description || ep.plot || '',
-        stream_id: ep.id || ep.episode_id || ''
-      });
-    });
+    const data = await callStalker(server, mac, type, 'get_ordered_list', { movie_id: seriesId }, clientIp);
+    const episodes = parseStalkerList(data).map(item => ({
+      id: item.id || "",
+      name: item.name || item.title || `Episode ${item.series_number || ""}`,
+      logo: item.logo || ""
+    }));
 
-    res.json({
-      success: true,
-      series_info: seriesInfo,
-      seasons: seasons,
-      total_episodes: episodes.length
-    });
+    res.json({ success: true, data: episodes });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -337,11 +246,11 @@ app.post('/api/get_episodes', async (req, res) => {
 
 // 5. Proxy Stream (Redirects client)
 app.get('/proxy_stream', async (req, res) => {
-  const { server, mac, stream_id, type, season, episode } = req.query;
+  const { server, mac, stream_id, type } = req.query;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
 
   try {
-    const resolvedUrl = await resolveStreamLink(server, mac, stream_id, type, clientIp, season, episode);
+    const resolvedUrl = await resolveStreamLink(server, mac, stream_id, type, clientIp);
     if (!resolvedUrl) return res.status(404).send('Unable to resolve stream');
 
     res.redirect(302, resolvedUrl);
@@ -384,33 +293,6 @@ app.get('/get.php', async (req, res) => {
           m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${mv.id}&type=vod`);
         });
       });
-    }
-
-    // Process Series
-    if (selections.s && selections.s.length > 0) {
-      const promises = selections.s.map(catId => getCategoryItems(server, mac, 'series', catId, clientIp));
-      const results = await Promise.all(promises);
-      for (const seriesList of results) {
-        for (const series of seriesList) {
-          // Add series entry
-          m3uLines.push(`#EXTINF:-1 tvg-id="${series.id}" tvg-name="${series.name}" tvg-logo="${series.logo || ''}" group-title="TV Series",${series.name}`);
-          m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${series.id}&type=series`);
-          
-          // Fetch and add episodes
-          try {
-            const episodes = await getSeriesEpisodes(server, mac, series.id, clientIp);
-            episodes.forEach(ep => {
-              const epName = ep.name || ep.title || `Episode ${ep.episode_number || ''}`;
-              const seasonNum = ep.season || ep.season_number || '1';
-              const epNum = ep.episode_number || ep.episode || '1';
-              m3uLines.push(`#EXTINF:-1 tvg-id="${ep.id}" tvg-name="${series.name} - ${epName}" tvg-logo="${ep.logo || series.logo || ''}" group-title="${series.name}",${series.name} - S${seasonNum}E${epNum} - ${epName}`);
-              m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${ep.id}&type=series&season=${seasonNum}&episode=${epNum}`);
-            });
-          } catch (e) {
-            console.error(`Error fetching episodes for series ${series.id}:`, e.message);
-          }
-        }
-      }
     }
 
     res.setHeader('Content-Type', 'application/x-mpegurl');
