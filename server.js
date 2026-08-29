@@ -10,13 +10,12 @@ app.use(express.json());
 
 // --- Helper Functions ---
 
-// Performs Handshake and Token Registration with the portal using Client's Home IP
 async function getSessionToken(server, mac, clientIp = '') {
   try {
     const cleanServer = server.replace(/\/c\/?$/i, '').replace(/\/$/i, '');
     const handshakeUrl = `${cleanServer}/portal.php?type=stb&action=handshake`;
     
-    const baseHeaders = {
+    const headers = {
       'User-Agent': 'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3',
       'Cookie': `mac=${encodeURIComponent(mac)}`,
       'X-User-MAC': mac,
@@ -24,25 +23,24 @@ async function getSessionToken(server, mac, clientIp = '') {
     };
 
     if (clientIp) {
-      baseHeaders['X-Forwarded-For'] = clientIp;
-      baseHeaders['X-Real-IP'] = clientIp;
+      headers['X-Forwarded-For'] = clientIp;
+      headers['X-Real-IP'] = clientIp;
     }
 
-    const hsResponse = await axios.get(handshakeUrl, { headers: baseHeaders, timeout: 5000 });
+    const hsResponse = await axios.get(handshakeUrl, { headers, timeout: 5000 });
     const token = hsResponse.data?.js?.token || hsResponse.data?.js || null;
     if (!token) return null;
 
     const profileUrl = `${cleanServer}/portal.php?type=stb&action=get_profile`;
-    const profileHeaders = { ...baseHeaders, 'Authorization': `Bearer ${token}` };
+    const profileHeaders = { ...headers, 'Authorization': `Bearer ${token}` };
     await axios.get(profileUrl, { headers: profileHeaders, timeout: 5000 });
 
     return token;
   } catch (e) {
-    return null; // Fallback to Cookie-only mode if handshake sequence fails
+    return null;
   }
 }
 
-// Executes an authorized stalker portal request
 async function callStalker(server, mac, type, action, params = {}, clientIp = '') {
   const cleanServer = server.replace(/\/c\/?$/i, '').replace(/\/$/i, '');
   const token = await getSessionToken(cleanServer, mac, clientIp);
@@ -122,26 +120,22 @@ async function getCategoryItems(server, mac, type, catId, clientIp) {
   return allData;
 }
 
-// Stream URL Command Formatter
-async function resolveStreamLink(server, mac, streamId, type, passedCmd, clientIp) {
+async function resolveStreamLink(server, mac, streamId, type, clientIp) {
   let resolvedUrl = '';
   
-  // Use Stalker's raw stored command (MP4, MKV etc.) if provided by the client (VOD and Series)
-  if (passedCmd) {
-    let resData = await callStalker(server, mac, type, 'create_link', { cmd: passedCmd }, clientIp).catch(() => null);
+  let cmd = type === 'itv' ? `ffmpeg http://localhost/ch/${streamId}` : `/media/${streamId}.mpg`;
+  let resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
+  resolvedUrl = resData?.js?.cmd || resData?.js || '';
+
+  if (!resolvedUrl) {
+    cmd = type === 'itv' ? `ffmpeg ${streamId}` : `${streamId}`;
+    resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
     resolvedUrl = resData?.js?.cmd || resData?.js || '';
   }
 
-  // Fallbacks if command is missing or failed
-  if (!resolvedUrl) {
-    let cmd = type === 'itv' ? `ffmpeg http://localhost/ch/${streamId}` : `/media/${streamId}.mpg`;
-    let resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
-    resolvedUrl = resData?.js?.cmd || resData?.js || '';
-  }
-
-  if (!resolvedUrl) {
-    let cmd = type === 'itv' ? `ffmpeg ${streamId}` : `${streamId}`;
-    let resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
+  if (!resolvedUrl && type === 'vod') {
+    cmd = `/media/${streamId}.mkv`;
+    resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
     resolvedUrl = resData?.js?.cmd || resData?.js || '';
   }
 
@@ -188,7 +182,7 @@ app.post('/create_account', (req, res) => {
   res.json({ success: true, password });
 });
 
-// 3. Get Items (Extracts exact portal commands for playback accuracy)
+// 3. Get Items (With robust cross-type logo parser)
 app.post('/api/get_items', async (req, res) => {
   const { server, mac, type, selectedCats } = req.body;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
@@ -200,11 +194,12 @@ app.post('/api/get_items', async (req, res) => {
 
     results.forEach(items => {
       items.forEach(item => {
+        // Robust logo fallback detection
+        const resolvedLogo = item.logo || item.screenshot_uri || item.pic || item.poster || item.image || item.cover || item.tv_genre_logo || "";
         allItems.push({
           id: item.id || "",
-          name: item.name || item.title || "",
-          logo: item.logo || item.tv_genre_logo || "",
-          cmd: item.cmd || "" // Stores original portal movie/stream path
+          name: item.name || item.title || item.o_name || "",
+          logo: resolvedLogo
         });
       });
     });
@@ -215,42 +210,43 @@ app.post('/api/get_items', async (req, res) => {
   }
 });
 
-// 4. Get Nested TV Series Episodes & Seasons
-app.post('/api/get_series_episodes', async (req, res) => {
+// 3.5. Get Episodes (Specific to TV Series folders)
+app.post('/api/get_episodes', async (req, res) => {
   const { server, mac, seriesId } = req.body;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
 
   try {
-    const resData = await callStalker(server, mac, 'series', 'get_ordered_list', { movie_id: seriesId }, clientIp);
-    const episodes = parseStalkerList(resData).map(item => ({
-      id: item.id || "",
-      name: item.name || item.title || "",
-      logo: item.logo || "",
-      cmd: item.cmd || ""
-    }));
-
+    const resData = await callStalker(server, mac, 'vod', 'get_ordered_list', { movie_id: seriesId }, clientIp);
+    const episodes = parseStalkerList(resData).map(ep => {
+      const resolvedLogo = ep.logo || ep.screenshot_uri || ep.pic || ep.poster || ep.image || ep.cover || "";
+      return {
+        id: ep.id || "",
+        name: ep.name || ep.title || `Episode ${ep.series_number || ""}`,
+        logo: resolvedLogo
+      };
+    });
     res.json({ success: true, data: episodes });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// 5. Proxy Stream Redirect (Now processes exact command parameters)
+// 4. Proxy Stream (Redirects client)
 app.get('/proxy_stream', async (req, res) => {
-  const { server, mac, stream_id, type, cmd } = req.query;
+  const { server, mac, stream_id, type } = req.query;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
 
   try {
-    const resolvedUrl = await resolveStreamLink(server, mac, stream_id, type, cmd, clientIp);
-    if (!resolvedUrl) return res.status(404).send('Unable to resolve stream link');
+    const resolvedUrl = await resolveStreamLink(server, mac, stream_id, type, clientIp);
+    if (!resolvedUrl) return res.status(404).send('Unable to resolve stream');
 
     res.redirect(302, resolvedUrl);
   } catch (err) {
-    res.status(500).send('Redirection streaming handler error: ' + err.message);
+    res.status(500).send('Streaming redirection failed: ' + err.message);
   }
 });
 
-// 6. Get M3U Playlist Compiler
+// 5. Get M3U (Compiles checked Live TV and Movies categories)
 app.get('/get.php', async (req, res) => {
   const { data } = req.query;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
@@ -269,42 +265,21 @@ app.get('/get.php', async (req, res) => {
       results.forEach(channels => {
         channels.forEach(ch => {
           m3uLines.push(`#EXTINF:-1 tvg-id="${ch.id}" tvg-name="${ch.name}" tvg-logo="${ch.logo || ''}" group-title="Live Channels",${ch.name}`);
-          m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${ch.id}&type=itv&cmd=${encodeURIComponent(ch.cmd || '')}`);
+          m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${ch.id}&type=itv`);
         });
       });
     }
 
-    // Process VOD Movies
+    // Process VOD (Movies)
     if (selections.v && selections.v.length > 0) {
       const promises = selections.v.map(catId => getCategoryItems(server, mac, 'vod', catId, clientIp));
       const results = await Promise.all(promises);
       results.forEach(movies => {
         movies.forEach(mv => {
           m3uLines.push(`#EXTINF:-1 tvg-id="${mv.id}" tvg-name="${mv.name}" tvg-logo="${mv.logo || ''}" group-title="VOD Movies",${mv.name}`);
-          m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${mv.id}&type=vod&cmd=${encodeURIComponent(mv.cmd || '')}`);
+          m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${mv.id}&type=vod`);
         });
       });
-    }
-
-    // Process TV Series (Fetches playable episodes nested under matched TV shows)
-    if (selections.s && selections.s.length > 0) {
-      const promises = selections.s.map(catId => getCategoryItems(server, mac, 'series', catId, clientIp));
-      const results = await Promise.all(promises);
-      
-      for (const shows of results) {
-        for (const show of shows) {
-          try {
-            const epData = await callStalker(server, mac, 'series', 'get_ordered_list', { movie_id: show.id }, clientIp).catch(() => null);
-            const episodes = parseStalkerList(epData);
-            episodes.forEach(ep => {
-              m3uLines.push(`#EXTINF:-1 tvg-id="${ep.id}" tvg-name="${show.name} - ${ep.name}" tvg-logo="${show.logo || ''}" group-title="TV Series - ${show.name}",${show.name} - ${ep.name}`);
-              m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${ep.id}&type=series&cmd=${encodeURIComponent(ep.cmd || '')}`);
-            });
-          } catch(e) {
-            // Skip show container if episode fetch fails
-          }
-        }
-      }
     }
 
     res.setHeader('Content-Type', 'application/x-mpegurl');
