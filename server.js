@@ -78,31 +78,21 @@ function parseStalkerList(data) {
   return [];
 }
 
-// Robust fallback categorizer for diverse Stalker portal variants
-async function getCategories(server, mac, type, clientIp) {
-  let data = null;
-  if (type === 'itv' || type === 'series') {
-    data = await callStalker(server, mac, type, 'get_genres', {}, clientIp).catch(() => null);
-    if (!parseStalkerList(data).length) {
-      data = await callStalker(server, mac, type, 'get_categories', {}, clientIp).catch(() => null);
-    }
-  } else { // VOD
-    data = await callStalker(server, mac, type, 'get_categories', {}, clientIp).catch(() => null);
-    if (!parseStalkerList(data).length) {
-      data = await callStalker(server, mac, type, 'get_genres', {}, clientIp).catch(() => null);
-    }
-  }
-  return data;
-}
-
 // Unified Pagination Fetcher: Compiles all pages for a category concurrently
 async function getCategoryItems(server, mac, type, catId, clientIp) {
-  const paramKey = (type === 'itv' || type === 'series') ? 'genre' : 'category';
+  const paramKey = type === 'itv' ? 'genre' : 'category';
+  const stalkerType = type === 'series' ? 'series' : type;
   let allData = [];
 
   try {
     // 1. Fetch Page 1 to inspect total counts
-    const firstPage = await callStalker(server, mac, type, 'get_ordered_list', { [paramKey]: catId, p: 1 }, clientIp).catch(() => null);
+    let firstPage = await callStalker(server, mac, stalkerType, 'get_ordered_list', { [paramKey]: catId, p: 1 }, clientIp).catch(() => null);
+    
+    // Fallback Series category check (Some portals query series under 'vod' type parameters)
+    if (!firstPage && type === 'series') {
+      firstPage = await callStalker(server, mac, 'vod', 'get_ordered_list', { [paramKey]: catId, p: 1 }, clientIp).catch(() => null);
+    }
+    
     if (!firstPage) return [];
 
     const jsData = firstPage.js || {};
@@ -119,7 +109,7 @@ async function getCategoryItems(server, mac, type, catId, clientIp) {
 
       for (let page = 2; page <= totalPages; page++) {
         pagePromises.push(
-          callStalker(server, mac, type, 'get_ordered_list', { [paramKey]: catId, p: page }, clientIp)
+          callStalker(server, mac, type === 'series' ? 'series' : type, 'get_ordered_list', { [paramKey]: catId, p: page }, clientIp)
             .then(res => parseStalkerList(res))
             .catch(() => [])
         );
@@ -137,22 +127,27 @@ async function getCategoryItems(server, mac, type, catId, clientIp) {
   return allData;
 }
 
-async function resolveStreamLink(server, mac, streamId, type, clientIp) {
+// Resolves exact stream commands using priority path parameters and falling back
+async function resolveStreamLink(server, mac, streamId, type, clientIp, passedCmd = '') {
   let resolvedUrl = '';
   
-  let cmd = type === 'itv' ? `ffmpeg http://localhost/ch/${streamId}` : `/media/${streamId}.mpg`;
-  let resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
-  resolvedUrl = resData?.js?.cmd || resData?.js || '';
-
-  if (!resolvedUrl) {
-    cmd = type === 'itv' ? `ffmpeg ${streamId}` : `${streamId}`;
-    resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
+  // 1. Use the actual command parsed from the portal first (Bypasses hardcoded extensions)
+  if (passedCmd) {
+    let resData = await callStalker(server, mac, type, 'create_link', { cmd: passedCmd }, clientIp).catch(() => null);
     resolvedUrl = resData?.js?.cmd || resData?.js || '';
   }
 
-  if (!resolvedUrl && (type === 'vod' || type === 'series')) {
-    cmd = `/media/${streamId}.mkv`;
-    resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
+  // Fallback A: Guess ffmpeg commands
+  if (!resolvedUrl) {
+    let cmd = type === 'itv' ? `ffmpeg http://localhost/ch/${streamId}` : `/media/${streamId}.mpg`;
+    let resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
+    resolvedUrl = resData?.js?.cmd || resData?.js || '';
+  }
+
+  // Fallback B: Raw stream ID
+  if (!resolvedUrl) {
+    let cmd = type === 'itv' ? `ffmpeg ${streamId}` : `${streamId}`;
+    let resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
     resolvedUrl = resData?.js?.cmd || resData?.js || '';
   }
 
@@ -164,7 +159,7 @@ async function resolveStreamLink(server, mac, streamId, type, clientIp) {
 
 // --- Endpoints ---
 
-// 1. Scan Categories (With flexible mapping protection)
+// 1. Scan Categories (Combines Native and Fallback Keyword Filtering for Series)
 app.get('/api/scan', async (req, res) => {
   const { server, mac } = req.query;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
@@ -173,18 +168,40 @@ app.get('/api/scan', async (req, res) => {
 
   try {
     const [liveData, vodData, seriesData] = await Promise.all([
-      getCategories(server, mac, 'itv', clientIp),
-      getCategories(server, mac, 'vod', clientIp),
-      getCategories(server, mac, 'series', clientIp)
+      callStalker(server, mac, 'itv', 'get_genres', {}, clientIp).catch(() => null),
+      callStalker(server, mac, 'vod', 'get_categories', {}, clientIp).catch(() => null),
+      callStalker(server, mac, 'series', 'get_categories', {}, clientIp).catch(() => null)
     ]);
+
+    const liveList = parseStalkerList(liveData).map(i => ({ id: i.id || i.category_id || "", title: i.title || i.name || "" }));
+    const rawVodList = parseStalkerList(vodData);
+    
+    const vodList = [];
+    const seriesList = [];
+
+    // Map Native Series categories if supported
+    parseStalkerList(seriesData).forEach(item => {
+      seriesList.push({ id: item.id || item.category_id || "", title: item.title || item.name || "" });
+    });
+
+    // Map mixed Categories using keyword matching fallback
+    rawVodList.forEach(item => {
+      const title = item.title || item.name || "";
+      const id = item.id || item.category_id || "";
+      const isSeriesKeyword = /series|show|tv|season|episode|مسلسلات/i.test(title);
+
+      if (isSeriesKeyword) {
+        if (!seriesList.some(s => s.id === id)) {
+          seriesList.push({ id, title });
+        }
+      } else {
+        vodList.push({ id, title });
+      }
+    });
 
     res.json({
       success: true,
-      categories: {
-        live: parseStalkerList(liveData).map(i => ({ id: i.id || i.category_id || "", title: i.title || i.name || "" })),
-        vod: parseStalkerList(vodData).map(i => ({ id: i.id || i.category_id || "", title: i.title || i.name || "" })),
-        series: parseStalkerList(seriesData).map(i => ({ id: i.id || i.category_id || "", title: i.title || i.name || "" }))
-      }
+      categories: { live: liveList, vod: vodList, series: seriesList }
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -199,7 +216,7 @@ app.post('/create_account', (req, res) => {
   res.json({ success: true, password });
 });
 
-// 3. Get Items (Paginated)
+// 3. Get Items (Preserves actual cmd parameters from the portal)
 app.post('/api/get_items', async (req, res) => {
   const { server, mac, type, selectedCats } = req.body;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
@@ -214,7 +231,8 @@ app.post('/api/get_items', async (req, res) => {
         allItems.push({
           id: item.id || "",
           name: item.name || item.title || "",
-          logo: item.logo || item.tv_genre_logo || ""
+          logo: item.logo || item.tv_genre_logo || "",
+          cmd: item.cmd || "" // <--- Keeps original file cmd
         });
       });
     });
@@ -225,17 +243,25 @@ app.post('/api/get_items', async (req, res) => {
   }
 });
 
-// 4. Get Episodes for a TV Show (New)
+// 4. Get Episodes for a TV Series (Hierarchical Loading)
 app.post('/api/get_episodes', async (req, res) => {
-  const { server, mac, type, seriesId } = req.body;
+  const { server, mac, seriesId } = req.body;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
 
+  if (!server || !mac || !seriesId) {
+    return res.status(400).json({ error: 'Missing parameters' });
+  }
+
   try {
-    const data = await callStalker(server, mac, type, 'get_ordered_list', { movie_id: seriesId }, clientIp);
-    const episodes = parseStalkerList(data).map(item => ({
+    let resp = await callStalker(server, mac, 'vod', 'get_ordered_list', { movie_id: seriesId }, clientIp).catch(() => null);
+    if (!resp || !parseStalkerList(resp).length) {
+      resp = await callStalker(server, mac, 'series', 'get_ordered_list', { movie_id: seriesId }, clientIp).catch(() => null);
+    }
+
+    const episodes = parseStalkerList(resp).map(item => ({
       id: item.id || "",
       name: item.name || item.title || `Episode ${item.series_number || ""}`,
-      logo: item.logo || ""
+      cmd: item.cmd || ""
     }));
 
     res.json({ success: true, data: episodes });
@@ -244,13 +270,13 @@ app.post('/api/get_episodes', async (req, res) => {
   }
 });
 
-// 5. Proxy Stream (Redirects client)
+// 5. Proxy Stream (Redirects client using passed cmd parameters)
 app.get('/proxy_stream', async (req, res) => {
-  const { server, mac, stream_id, type } = req.query;
+  const { server, mac, stream_id, type, cmd } = req.query;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
 
   try {
-    const resolvedUrl = await resolveStreamLink(server, mac, stream_id, type, clientIp);
+    const resolvedUrl = await resolveStreamLink(server, mac, stream_id, type, clientIp, cmd);
     if (!resolvedUrl) return res.status(404).send('Unable to resolve stream');
 
     res.redirect(302, resolvedUrl);
@@ -259,7 +285,7 @@ app.get('/proxy_stream', async (req, res) => {
   }
 });
 
-// 6. Get M3U (Paginated across all selections)
+// 6. Get M3U (Compiles complete playlist references)
 app.get('/get.php', async (req, res) => {
   const { data } = req.query;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
@@ -290,7 +316,7 @@ app.get('/get.php', async (req, res) => {
       results.forEach(movies => {
         movies.forEach(mv => {
           m3uLines.push(`#EXTINF:-1 tvg-id="${mv.id}" tvg-name="${mv.name}" tvg-logo="${mv.logo || ''}" group-title="VOD Movies",${mv.name}`);
-          m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${mv.id}&type=vod`);
+          m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${mv.id}&type=vod&cmd=${encodeURIComponent(mv.cmd || '')}`);
         });
       });
     }
