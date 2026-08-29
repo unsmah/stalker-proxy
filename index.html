@@ -3,260 +3,174 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IPTV Portal Converter & Scanner</title>
+    <title>IPTV Portal Workspace Dashboard</title>
     <!-- Fonts & External Libraries -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/mpegts.js@latest/dist/mpegts.min.js"></script>
 
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background: #0b0e1a;
-            background-image: radial-gradient(circle at 10% 30%, #1a2236 0%, #0b0e1a 80%);
-            min-height: 100vh;
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        cairo: ['Cairo', 'sans-serif'],
+                    }
+                }
+            }
         }
-        .glass {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-        .glass-dark {
-            background: rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, #3b82f6, #6366f1);
-            transition: all 0.2s ease;
-        }
-        .btn-primary:hover {
-            transform: scale(1.02);
-            box-shadow: 0 8px 25px -8px rgba(59, 130, 246, 0.5);
-        }
-        .btn-primary:active {
-            transform: scale(0.97);
-        }
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            transition: all 0.2s ease;
-        }
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.15);
-            border-color: rgba(255, 255, 255, 0.25);
-        }
-        .input-field {
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            transition: border 0.2s ease;
-        }
-        .input-field:focus {
-            border-color: #6366f1;
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-        }
-        .category-box {
-            max-height: 320px;
-            overflow-y: auto;
-            scrollbar-width: thin;
-            scrollbar-color: rgba(255,255,255,0.1) transparent;
-        }
-        .category-box::-webkit-scrollbar {
-            width: 4px;
-        }
-        .category-box::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.2);
-            border-radius: 10px;
-        }
-        .stream-card {
-            transition: all 0.2s ease;
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-        .stream-card:hover {
-            border-color: #6366f1;
-            background: rgba(99,102,241,0.1);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px -8px rgba(99,102,241,0.2);
-        }
-        .stream-card.selected {
-            border-color: #fbbf24;
-            background: rgba(251,191,36,0.1);
-            box-shadow: 0 0 0 2px rgba(251,191,36,0.3);
-        }
-        .log-console {
-            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
-            font-size: 12px;
-            line-height: 1.6;
-        }
-        .modal-overlay {
-            background: rgba(0,0,0,0.7);
-            backdrop-filter: blur(10px);
-        }
-        .badge {
-            background: rgba(99,102,241,0.2);
-            color: #a5b4fc;
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.65rem;
-            font-weight: 600;
-        }
-    </style>
+    </script>
 </head>
-<body>
+<body class="bg-[#0b0f19] text-slate-100 font-cairo min-h-screen">
 
-<div id="app" class="flex flex-col items-center p-4 md:p-8 max-w-7xl mx-auto">
+<div class="w-full max-w-7xl mx-auto p-4 md:p-6 flex flex-col gap-6">
 
-    <!-- Header -->
-    <div class="w-full flex flex-wrap items-center justify-between gap-4 mb-8">
+    <!-- Top Navigation Header -->
+    <header class="flex justify-between items-center border-b border-slate-800 pb-4 flex-wrap gap-4">
         <div>
-            <h1 class="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">IPTV Utility Platform</h1>
-            <p class="text-xs text-slate-400 font-medium mt-1">Stalker Portal Scanner & Converter</p>
+            <h1 class="text-2xl font-black tracking-wide text-white uppercase">STALKER WORKSPACE DASHBOARD</h1>
+            <p class="text-xs text-slate-400 mt-1">Convert Accounts, Compile Lists, and Explore Portals</p>
         </div>
         <div class="flex gap-3">
-            <button id="btnEngine" class="px-4 py-2 rounded-full text-xs font-bold bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition">⚡ Server: Render</button>
-            <button id="btnLang" class="px-4 py-2 rounded-full text-xs font-bold bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition">🌐 EN / AR</button>
+            <button class="bg-sky-500/10 border border-sky-500/30 text-sky-400 py-1.5 px-4 rounded-lg font-bold text-xs" id="btnEngine">Server: Render App</button>
+            <button class="bg-sky-500/10 border border-sky-500/30 text-sky-400 py-1.5 px-4 rounded-lg font-bold text-xs" id="btnLang">Language: EN / AR</button>
         </div>
-    </div>
+    </header>
 
-    <!-- Main Glass Container -->
-    <div class="w-full glass rounded-3xl p-6 md:p-8">
+    <!-- Main Dashboard Grid -->
+    <main class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- Left Panel (Settings & Operations - 4 Columns) -->
+        <section class="lg:col-span-4 flex flex-col gap-6 w-full">
+            
+            <!-- Connection Card -->
+            <div class="bg-[#0f172a] border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col gap-4">
+                <h3 class="text-sm font-black text-sky-400 uppercase tracking-wider border-b border-white/5 pb-2">1. Portal Connection</h3>
+                
+                <div class="flex flex-col gap-1">
+                    <label class="text-[11px] font-bold text-slate-400">Portal URL</label>
+                    <input type="text" id="txtPortal" placeholder="http://example.com:8080/c/" class="bg-black/40 border border-slate-700 rounded-lg p-2.5 text-xs font-bold outline-none focus:border-sky-500">
+                </div>
 
-        <!-- Input Row -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div>
-                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Portal URL</label>
-                <div class="relative">
-                    <input id="txtPortal" type="text" placeholder="http://example.com:8080/c/" class="input-field w-full text-slate-100 rounded-xl py-3 px-4 pr-20 text-sm font-medium">
-                    <button onclick="copyValue('txtPortal')" class="absolute right-2 top-1/2 -translate-y-1/2 bg-white/5 hover:bg-white/10 text-slate-300 text-xs px-3 py-1.5 rounded-lg transition">Copy</button>
+                <div class="flex flex-col gap-1">
+                    <label class="text-[11px] font-bold text-slate-400">MAC Address</label>
+                    <input type="text" id="txtMac" placeholder="00:1a:79:00:00:00" class="bg-black/40 border border-slate-700 rounded-lg p-2.5 text-xs font-bold outline-none focus:border-sky-500">
+                </div>
+
+                <div class="flex flex-col gap-2 mt-2">
+                    <button class="w-full bg-teal-600 hover:bg-teal-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition active:scale-95 shadow-md" id="btnFetchDb">
+                        Connect & Fetch Server Database
+                    </button>
+                    <input type="text" id="dbStatusText" placeholder="No Server Database Loaded" readonly class="bg-black/40 border border-slate-700 rounded-lg p-2 text-center text-xs font-bold text-slate-400">
                 </div>
             </div>
-            <div>
-                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">MAC Address</label>
-                <div class="relative">
-                    <input id="txtMac" type="text" placeholder="00:1a:79:00:00:00" class="input-field w-full text-slate-100 rounded-xl py-3 px-4 pr-20 text-sm font-medium">
-                    <button onclick="copyValue('txtMac')" class="absolute right-2 top-1/2 -translate-y-1/2 bg-white/5 hover:bg-white/10 text-slate-300 text-xs px-3 py-1.5 rounded-lg transition">Copy</button>
+
+            <!-- Operations Controller -->
+            <div class="bg-[#0f172a] border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col gap-3">
+                <h3 class="text-sm font-black text-sky-400 uppercase tracking-wider border-b border-white/5 pb-2">2. Action Controls</h3>
+                
+                <button class="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition active:scale-95 shadow-sm" id="btnNextServer">
+                    Load Next Database Server
+                </button>
+
+                <button class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition active:scale-95 shadow-sm" id="btnScanServer">
+                    Scan Portal Categories
+                </button>
+
+                <button class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition active:scale-95 shadow-sm" id="btnClearInputs">
+                    Clear Input Fields
+                </button>
+
+                <button class="w-full bg-violet-600 hover:bg-violet-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition active:scale-95 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed" id="btnConvert" disabled>
+                    Generate Xtream Credentials
+                </button>
+
+                <button class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition active:scale-95 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed" id="btnDownloadM3u" disabled>
+                    Export M3U Playlist (With Episodes)
+                </button>
+            </div>
+
+            <!-- Log Console -->
+            <div class="bg-[#020617] border border-slate-800 rounded-2xl h-[200px] flex flex-col overflow-hidden">
+                <div class="bg-[#0f172a] py-2 px-4 border-b border-white/5 flex items-center justify-between">
+                    <span class="text-[10px] text-slate-400 font-extrabold tracking-widest">PROCESS LOG</span>
+                </div>
+                <div class="flex-1 p-3 overflow-y-auto font-mono text-[11px] leading-normal" id="logConsole">
+                    <div class="text-sky-400">> System initialized. Ready.</div>
                 </div>
             </div>
-        </div>
 
-        <!-- Action Buttons Row -->
-        <div class="flex flex-wrap gap-3 mb-6">
-            <button id="btnFetchDb" class="btn-primary text-white px-6 py-3 rounded-xl text-sm font-bold shadow-lg flex items-center gap-2">
-                <span>📡</span> 1. Fetch DB
-            </button>
-            <button id="btnNextServer" class="btn-secondary text-slate-200 px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2">
-                <span>⏩</span> 2. Load Server
-            </button>
-            <button id="btnScanServer" class="btn-primary text-white px-6 py-3 rounded-xl text-sm font-bold shadow-lg flex items-center gap-2">
-                <span>🔍</span> 3. Scan Portal
-            </button>
-            <button id="btnClearInputs" class="btn-secondary text-slate-200 px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2">
-                <span>🗑️</span> 4. Clear
-            </button>
-            <button id="btnConvert" disabled class="btn-primary text-white px-6 py-3 rounded-xl text-sm font-bold shadow-lg flex items-center gap-2 opacity-50 cursor-not-allowed disabled:opacity-40 disabled:cursor-not-allowed">
-                <span>🔑</span> 5. Convert
-            </button>
-            <button id="btnDownloadM3u" disabled class="btn-primary text-white px-6 py-3 rounded-xl text-sm font-bold shadow-lg flex items-center gap-2 opacity-50 cursor-not-allowed disabled:opacity-40 disabled:cursor-not-allowed">
-                <span>📥</span> 6. M3U
-            </button>
-            <button id="btnPreview" disabled class="btn-primary text-white px-6 py-3 rounded-xl text-sm font-bold shadow-lg flex items-center gap-2 opacity-50 cursor-not-allowed disabled:opacity-40 disabled:cursor-not-allowed">
-                <span>▶️</span> 7. Preview
-            </button>
-        </div>
+        </section>
 
-        <!-- DB Status -->
-        <div class="mb-6">
-            <input id="dbStatusText" type="text" placeholder="Database not loaded" readonly class="input-field w-full text-slate-100 rounded-xl py-3 px-4 text-sm font-medium text-center bg-black/30">
-        </div>
+        <!-- Right Panel (Theatre Player, Category Mapping & Media Grid - 8 Columns) -->
+        <section class="lg:col-span-8 flex flex-col gap-6 w-full">
+            
+            <!-- Theatre Stream Player -->
+            <div class="bg-[#020617] border border-slate-800 rounded-2xl p-4 shadow-lg flex flex-col gap-3">
+                <div class="text-yellow-500 text-xs font-black" id="previewTitle">Select content below to load playback...</div>
+                
+                <div class="aspect-video w-full bg-black rounded-lg overflow-hidden relative">
+                    <video id="videoPlayer" class="w-full h-full object-contain" controls autoplay></video>
+                </div>
+                
+                <!-- Quick Action Buttons -->
+                <div id="streamActions" class="flex flex-wrap gap-2 hidden border-t border-white/5 pt-3">
+                    <button id="btnCopyStreamUrl" class="bg-sky-500 hover:bg-sky-600 text-slate-950 font-bold text-xs py-2 px-4 rounded transition active:scale-95">Copy Raw Stream Link</button>
+                    <a id="btnExternalVlc" href="#" target="_blank" class="bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs py-2 px-4 rounded transition active:scale-95 inline-flex items-center">Play in VLC Player</a>
+                </div>
+                
+                <div id="mixedContentWarning" class="text-[11px] text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 p-3 rounded-lg hidden">
+                    <strong>⚠️ Browser Playback Warning:</strong> If the video does not load, click the <strong class="text-white">Lock/Tune icon</strong> in your browser's address bar, select <strong class="text-white">Site Settings</strong>, find <strong class="text-white">Insecure content</strong>, set it to <strong class="text-white">Allow</strong>, and refresh the page.
+                </div>
+            </div>
 
-        <!-- Category Selection (hidden until scan) -->
-        <div id="selectionContainer" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 hidden">
-            <div class="glass-dark rounded-2xl p-5 category-box">
-                <h4 class="text-blue-400 text-xs font-black uppercase tracking-wider pb-3 border-b border-white/5 text-center">📺 Live Channels</h4>
-                <div id="liveCats" class="flex flex-col gap-2 mt-3"></div>
-            </div>
-            <div class="glass-dark rounded-2xl p-5 category-box">
-                <h4 class="text-blue-400 text-xs font-black uppercase tracking-wider pb-3 border-b border-white/5 text-center">🎬 VOD Movies</h4>
-                <div id="vodCats" class="flex flex-col gap-2 mt-3"></div>
-            </div>
-            <div class="glass-dark rounded-2xl p-5 category-box">
-                <h4 class="text-blue-400 text-xs font-black uppercase tracking-wider pb-3 border-b border-white/5 text-center">📺 TV Series</h4>
-                <div id="seriesCats" class="flex flex-col gap-2 mt-3"></div>
-            </div>
-        </div>
+            <!-- Tabbed Media Explorer Section -->
+            <div class="bg-[#0f172a] border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col gap-4">
+                
+                <!-- Exploration Tabs -->
+                <div class="flex border-b border-white/5 pb-1 gap-2">
+                    <button class="tab-btn py-2 px-4 text-xs font-black uppercase tracking-wider text-sky-400 border-b-2 border-sky-400 transition" id="tabLive" onclick="switchTab('live')">Live TV</button>
+                    <button class="tab-btn py-2 px-4 text-xs font-black uppercase tracking-wider text-slate-400 border-b-2 border-transparent transition" id="tabVod" onclick="switchTab('vod')">Movies (VOD)</button>
+                    <button class="tab-btn py-2 px-4 text-xs font-black uppercase tracking-wider text-slate-400 border-b-2 border-transparent transition" id="tabSeries" onclick="switchTab('series')">TV Series</button>
+                </div>
 
-        <!-- Console Log -->
-        <div class="glass-dark rounded-2xl h-56 flex flex-col overflow-hidden">
-            <div class="bg-black/30 px-5 py-3 border-b border-white/5 flex justify-between items-center">
-                <span class="text-xs font-bold text-slate-400 tracking-widest">⚙️ SYSTEM LOG</span>
-                <span class="text-[10px] text-slate-500">live</span>
-            </div>
-            <div id="logConsole" class="flex-1 p-4 overflow-y-auto log-console text-slate-300">
-                <div class="text-blue-400">> System initialized. Ready.</div>
-            </div>
-        </div>
-    </div>
-</div>
+                <!-- Checked Category Selectors -->
+                <div class="flex flex-col gap-2 max-h-[160px] overflow-y-auto bg-black/30 rounded-xl p-3 border border-white/5" id="categoriesContainer">
+                    <span class="text-slate-400 text-xs text-center">Scan a portal to load categories...</span>
+                </div>
 
-<!-- Stream Preview Modal -->
-<div id="previewModal" class="modal-overlay fixed inset-0 w-full h-full z-[1000] hidden items-center justify-center p-4">
-    <div class="glass-dark rounded-3xl w-full max-w-6xl max-h-[90vh] overflow-y-auto p-6 flex flex-col gap-5 shadow-2xl">
-
-        <!-- Header -->
-        <div class="flex items-center justify-between">
-            <h3 class="text-xl font-bold text-white">🎥 Stream Preview</h3>
-            <button id="btnClosePreview" class="bg-red-500/20 hover:bg-red-500/40 text-red-300 px-5 py-2 rounded-xl text-sm font-bold transition">✕ Close</button>
-        </div>
-
-        <!-- Player -->
-        <div class="bg-black/50 rounded-2xl p-4 border border-white/5">
-            <div id="previewTitle" class="text-yellow-400 text-sm font-bold mb-3">Select content to load playback...</div>
-            <video id="videoPlayer" class="w-full max-h-[50vh] bg-black rounded-lg" controls autoplay></video>
-            <div id="streamActions" class="mt-4 flex flex-wrap gap-3 hidden">
-                <button id="btnCopyStreamUrl" class="bg-blue-500/20 hover:bg-blue-500/40 text-blue-300 text-xs font-bold py-2 px-4 rounded-xl transition">📋 Copy Stream URL</button>
-                <a id="btnExternalVlc" href="#" target="_blank" class="bg-orange-500/20 hover:bg-orange-500/40 text-orange-300 text-xs font-bold py-2 px-4 rounded-xl transition inline-flex items-center">▶️ Play External</a>
-            </div>
-            <div id="mixedContentWarning" class="mt-3 text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-xl hidden">
-                <span class="font-bold block mb-1">⚠️ Mixed Content Warning</span>
-                Insecure HTTP streams may be blocked by your browser on HTTPS pages.<br>
-                <span class="inline-block mt-2">🔒 Click the padlock in address bar → <strong>Site Settings</strong> → Allow <strong>Insecure content</strong>, then refresh.</span>
-            </div>
-        </div>
-
-        <!-- Content Grids -->
-        <div class="space-y-6">
-            <!-- Live -->
-            <div>
-                <h4 class="text-blue-400 text-sm font-bold tracking-wide mb-3">📺 Live Channels</h4>
-                <div id="modalLiveList" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3"></div>
-            </div>
-            <!-- VOD -->
-            <div>
-                <h4 class="text-blue-400 text-sm font-bold tracking-wide mb-3">🎬 VOD Movies</h4>
-                <div id="modalVodList" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3"></div>
-            </div>
-            <!-- Series -->
-            <div>
-                <h4 class="text-blue-400 text-sm font-bold tracking-wide mb-3">📺 TV Series</h4>
-                <div id="modalSeriesList" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3"></div>
-                <!-- Sub-container for episodes -->
-                <div id="episodesContainer" class="mt-4 hidden">
-                    <div class="flex items-center gap-4 mb-3">
-                        <button id="btnBackToSeries" class="bg-white/10 hover:bg-white/20 text-slate-300 text-xs font-bold py-1.5 px-4 rounded-lg transition">← Back to Series</button>
-                        <span id="currentSeriesTitle" class="text-sm font-bold text-white"></span>
+                <!-- Scanned Media Item Grid Explorer -->
+                <div class="flex flex-col gap-3">
+                    <div class="flex justify-between items-center border-b border-white/5 pb-2">
+                        <span class="text-xs font-bold text-slate-400">Media Catalog Items</span>
+                        <button class="bg-sky-500/10 border border-sky-500/30 text-sky-400 hover:bg-sky-500 hover:text-slate-950 font-bold text-xs py-1 px-3 rounded transition" id="btnExplore" onclick="exploreCheckedCategories()">Explore Checked Groups</button>
                     </div>
-                    <div id="episodesList" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3"></div>
+
+                    <!-- TV Series Episode Panel Container (Hidden by default) -->
+                    <div id="episodePanel" class="bg-black/40 border border-yellow-500/20 rounded-xl p-4 flex flex-col gap-2 hidden">
+                        <div class="flex justify-between items-center border-b border-white/5 pb-2">
+                            <span class="text-xs font-bold text-yellow-500" id="episodePanelTitle">Seasons & Episodes</span>
+                            <button class="text-xs text-slate-400 hover:text-white" onclick="closeEpisodePanel()">Back to Shows</button>
+                        </div>
+                        <div id="episodeList" class="flex flex-col gap-1.5 max-h-[160px] overflow-y-auto"></div>
+                    </div>
+
+                    <div id="mediaItemsGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 py-2 max-h-[300px] overflow-y-auto">
+                        <span class="text-slate-400 text-xs col-span-full text-center">No categories scanned or explored yet.</span>
+                    </div>
                 </div>
+
             </div>
-        </div>
-    </div>
+
+        </section>
+
+    </main>
+
 </div>
 
 <script>
+    // Configured Server Target (Set to your Render Web Service URL)
     const CONFIG = {
         WORKER: "https://stalker-proxy-cu5p.onrender.com",
         DB_URL: "https://raw.githubusercontent.com/djamekchaouadi/SERVER/main/1.txt"
@@ -266,415 +180,495 @@
     let currentLanguage = 'en';
     let dbCollection = [];
     let scannedCategories = { live: [], vod: [], series: [] };
-    let currentSeriesId = null; // for episodes
+    let currentActiveTab = 'live';
 
-    // Language dictionary (simplified)
-    const lang = {
+    // Dictionary mappings for multilingual strings
+    const langDict = {
         en: {
-            scanSuccess: "Scan complete. Categories loaded.",
-            scanFailed: "Scan failed. Check portal and MAC.",
-            dbSuccess: "Loaded {count} portals.",
-            dbError: "Failed to fetch database.",
-            noSelection: "Select at least one category.",
-            ready: "Credentials generated."
+            scanSuccess: "Scan complete. Categories configured successfully.",
+            scanFailed: "Failed to connect or scan selected target portal.",
+            dbSuccess: "Loaded {count} active portal items to current workspace pool.",
+            dbError: "Could not successfully connect to the remote server directory.",
+            noSelection: "You must check at least one category mapping before conversion.",
+            ready: "Target accounts configured. Copy the data below to connect."
         },
         ar: {
-            scanSuccess: "اكتمل الفحص. تم تحميل الباقات.",
-            scanFailed: "فشل الفحص. تحقق من البوابة و MAC.",
-            dbSuccess: "تم تحميل {count} بوابة.",
-            dbError: "فشل جلب قاعدة البيانات.",
-            noSelection: "اختر باقة واحدة على الأقل.",
-            ready: "تم إنشاء بيانات الدخول."
+            scanSuccess: "اكتمل الفحص بنجاح. تم تعيين الباقات.",
+            scanFailed: "فشل الاتصال بالخادم المستهدف أو الفحص.",
+            dbSuccess: "تم جلب {count} خادم بنجاح في الذاكرة.",
+            dbError: "فشل الاتصال بقاعدة البيانات البعيدة.",
+            noSelection: "يجب اختيار باقة واحدة على الأقل قبل عملية التحويل.",
+            ready: "تم تجهيز البيانات بنجاح. انسخ البيانات للتشغيل."
         }
     };
 
-    function pushLog(msg, severity = 'info') {
-        const el = document.getElementById('logConsole');
-        const div = document.createElement('div');
-        div.className = 'py-1 border-b border-white/5';
-        if (severity === 'success') div.classList.add('text-green-400');
-        else if (severity === 'error') div.classList.add('text-red-400');
-        else if (severity === 'warn') div.classList.add('text-yellow-400');
-        else div.classList.add('text-blue-400');
-        div.textContent = '> ' + msg;
-        el.appendChild(div);
-        el.scrollTop = el.scrollHeight;
+    function pushLog(text, severity = 'normal') {
+        const consoleEl = document.getElementById('logConsole');
+        const logLine = document.createElement('div');
+        logLine.className = 'log-item py-1 border-b border-white/5';
+        
+        if (severity === 'success') logLine.classList.add('text-green-400');
+        else if (severity === 'error') logLine.classList.add('text-red-400');
+        else if (severity === 'warn') logLine.classList.add('text-yellow-400');
+        else if (severity === 'info') logLine.classList.add('text-sky-400');
+
+        logLine.innerHTML = `> ${text}`;
+        consoleEl.appendChild(logLine);
+        consoleEl.scrollTop = consoleEl.scrollHeight;
     }
 
+    // Toggle Language
     document.getElementById('btnLang').addEventListener('click', () => {
         currentLanguage = currentLanguage === 'en' ? 'ar' : 'en';
-        pushLog(`Language: ${currentLanguage.toUpperCase()}`, 'info');
+        pushLog(`Language changed to: ${currentLanguage.toUpperCase()}`, 'info');
     });
 
+    // Reset Form Fields
     document.getElementById('btnClearInputs').addEventListener('click', () => {
         document.getElementById('txtPortal').value = '';
         document.getElementById('txtMac').value = '';
-        document.getElementById('selectionContainer').style.display = 'none';
+        document.getElementById('categoriesContainer').innerHTML = '<span class="text-slate-400 text-xs text-center">Scan a portal to load categories...</span>';
+        document.getElementById('mediaItemsGrid').innerHTML = '<span class="text-slate-400 text-xs col-span-full text-center">No categories scanned or explored yet.</span>';
+        closeEpisodePanel();
         disableOptionalControls();
-        pushLog('Workspace cleared.', 'info');
+        pushLog("Workspace variables and fields successfully reset.", "info");
     });
 
+    // Fetch Portal Database File
     document.getElementById('btnFetchDb').addEventListener('click', async () => {
-        pushLog('Fetching portal database...', 'info');
+        pushLog("Connecting to structural portal file repository...", "info");
         dbCollection = [];
         try {
             const resp = await fetch(`${CONFIG.DB_URL}?nocache=${Date.now()}`);
-            if (!resp.ok) throw new Error('Network error');
-            const text = await resp.text();
-            const lines = text.split(/\r?\n/);
-            let currentPanel = '';
-            for (let line of lines) {
+            if (!resp.ok) throw new Error("Fetch unsuccessful");
+            const textData = await resp.text();
+            const textLines = textData.split(/\r?\n/);
+            
+            let currentPanel = "";
+            for (let line of textLines) {
                 line = line.trim();
-                if (line.startsWith('PANEL')) {
-                    currentPanel = line.replace('PANEL', '').trim();
-                } else if (line.startsWith('MAC') && currentPanel) {
-                    const mac = line.replace('MAC', '').trim();
-                    if (currentPanel && mac) dbCollection.push({ panel: currentPanel, mac });
+                if (line.startsWith("PANEL")) {
+                    currentPanel = line.replace("PANEL", "").trim();
+                } else if (line.startsWith("MAC")) {
+                    let extractedMac = line.replace("MAC", "").trim();
+                    if (currentPanel && extractedMac) {
+                        dbCollection.push({ panel: currentPanel, mac: extractedMac });
+                    }
                 }
             }
+
             if (dbCollection.length > 0) {
                 document.getElementById('dbStatusText').value = `${dbCollection.length} Portals Cached`;
-                pushLog(lang[currentLanguage].dbSuccess.replace('{count}', dbCollection.length), 'success');
-            } else throw new Error('No entries');
-        } catch (e) {
-            pushLog(lang[currentLanguage].dbError, 'error');
+                pushLog(langDict[currentLanguage].dbSuccess.replace('{count}', dbCollection.length), 'success');
+            } else {
+                throw new Error("No entities matched structural filters.");
+            }
+        } catch (err) {
+            pushLog(langDict[currentLanguage].dbError, 'error');
         }
     });
 
+    // Pick Next Server from Pool
     document.getElementById('btnNextServer').addEventListener('click', () => {
         if (dbCollection.length === 0) {
-            pushLog('Database empty. Run Fetch DB first.', 'error');
+            pushLog("Database pool empty. Run database fetch first.", "error");
             return;
         }
         const item = dbCollection.shift();
         document.getElementById('txtPortal').value = item.panel;
         document.getElementById('txtMac').value = item.mac;
         document.getElementById('dbStatusText').value = `${dbCollection.length} Portals Remaining`;
-        pushLog(`Loaded: ${item.panel}`, 'info');
+        pushLog(`Loaded target portal URL: ${item.panel}`, "info");
         disableOptionalControls();
     });
 
+    // Scan Target Portal Categories
     document.getElementById('btnScanServer').addEventListener('click', async () => {
         let server = document.getElementById('txtPortal').value.trim();
         const mac = document.getElementById('txtMac').value.trim();
-        if (!server || !mac) {
-            pushLog('Enter both Portal URL and MAC.', 'error');
+
+        if (!server.startsWith("http") || !mac) {
+            pushLog("Please check inputs. Portal must start with http, and MAC cannot be empty.", "error");
             return;
         }
+
         server = server.replace(/\/c\/?$/i, '').replace(/\/$/i, '');
-        pushLog(`Scanning ${server} ...`, 'info');
+        pushLog(`Mapping API payload: Running remote portal scanner on: ${server}`, "info");
+
         try {
-            const url = `${CONFIG[activeEngine]}/api/scan?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}`;
-            const resp = await fetch(url);
-            const data = await resp.json();
-            if (!data.success) throw new Error(data.error || 'Scan failed');
+            const scanUrl = `${CONFIG[activeEngine]}/api/scan?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}`;
+            const response = await fetch(scanUrl);
+            const data = await response.json();
+
+            if (data.error || !data.success) {
+                throw new Error(data.error || "Remote scanner returned error");
+            }
+
             scannedCategories = data.categories;
-            populateCategories();
-            document.getElementById('selectionContainer').style.display = 'grid';
+            switchTab(currentActiveTab);
             enableOptionalControls();
-            pushLog(lang[currentLanguage].scanSuccess, 'success');
+            
+            pushLog(langDict[currentLanguage].scanSuccess, 'success');
         } catch (e) {
-            pushLog(lang[currentLanguage].scanFailed, 'error');
+            pushLog(langDict[currentLanguage].scanFailed, 'error');
         }
     });
 
-    function populateCategories() {
-        const render = (list, containerId) => {
-            const el = document.getElementById(containerId);
-            el.innerHTML = '';
-            list.forEach(item => {
-                el.innerHTML += `
-                    <label class="flex items-center gap-3 bg-white/5 hover:bg-white/10 rounded-lg p-2 cursor-pointer transition">
-                        <input type="checkbox" name="${containerId}" value="${item.id}" class="accent-blue-500 w-4 h-4">
-                        <span class="text-sm text-slate-200">${item.title}</span>
-                    </label>
-                `;
-            });
-        };
-        render(scannedCategories.live, 'liveCats');
-        render(scannedCategories.vod, 'vodCats');
-        render(scannedCategories.series, 'seriesCats');
-    }
+    // Switch Category Selection Tabs (Live TV, Movies, Series)
+    window.switchTab = function(tabName) {
+        currentActiveTab = tabName;
+        
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('text-sky-400', 'border-sky-400');
+            btn.classList.add('text-slate-400', 'border-transparent');
+        });
+        document.getElementById(`tab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`).classList.add('text-sky-400', 'border-sky-400');
 
-    function getSelections() {
+        const container = document.getElementById('categoriesContainer');
+        container.innerHTML = '';
+
+        const sourceList = scannedCategories[tabName] || [];
+        if (sourceList.length === 0) {
+            container.innerHTML = '<span class="text-slate-400 text-xs text-center">No categories available. Please scan a portal.</span>';
+            return;
+        }
+
+        sourceList.forEach(item => {
+            container.innerHTML += `
+                <label class="checkbox-label flex items-center gap-3 bg-white/5 border border-transparent rounded-lg p-2 transition cursor-pointer hover:bg-sky-500/10 hover:text-white">
+                    <input type="checkbox" name="cat_${tabName}" value="${item.id}" class="accent-sky-500 w-4 h-4">
+                    <span class="text-xs font-bold">${item.title}</span>
+                </label>`;
+        });
+    };
+
+    // Explore Checked Categories on demand and load them into the main grid
+    window.exploreCheckedCategories = async () => {
         const server = document.getElementById('txtPortal').value.trim().replace(/\/c\/?$/i, '').replace(/\/$/i, '');
         const mac = document.getElementById('txtMac').value.trim();
-        const l = Array.from(document.querySelectorAll('#liveCats input:checked')).map(el => el.value);
-        const v = Array.from(document.querySelectorAll('#vodCats input:checked')).map(el => el.value);
-        const s = Array.from(document.querySelectorAll('#seriesCats input:checked')).map(el => el.value);
-        if (l.length + v.length + s.length === 0) {
-            pushLog(lang[currentLanguage].noSelection, 'warn');
+        if (!server || !mac) return;
+
+        const checkedBoxes = document.querySelectorAll(`input[name="cat_${currentActiveTab}"]:checked`);
+        const checkedIds = Array.from(checkedBoxes).map(cb => cb.value);
+
+        if (checkedIds.length === 0) {
+            pushLog("Please select at least one category to explore.", "warn");
+            return;
+        }
+
+        closeEpisodePanel();
+        const grid = document.getElementById('mediaItemsGrid');
+        grid.innerHTML = '<span class="text-yellow-500 text-xs col-span-full text-center">Fetching category catalog items...</span>';
+
+        try {
+            // Map 'series' tab exploration requests to 'series' type, otherwise keep the tab type
+            const fetchType = currentActiveTab === 'series' ? 'series' : currentActiveTab === 'vod' ? 'vod' : 'itv';
+
+            const res = await fetch(`${CONFIG[activeEngine]}/api/get_items`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ server, mac, type: fetchType, selectedCats: checkedIds })
+            });
+            const result = await res.json();
+
+            if (result.success && result.data.length > 0) {
+                let htmlContent = '';
+                result.data.forEach(item => {
+                    const img = item.logo ? `<img src="${item.logo}" class="max-w-[50px] max-h-[50px] mb-2 object-contain rounded" onerror="this.style.display='none'">` : '';
+                    
+                    if (currentActiveTab === 'series') {
+                        // Clicking TV Shows fetches episodes dynamically
+                        htmlContent += `
+                            <div id="stream-${item.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[100px] hover:border-yellow-500 hover:bg-yellow-500/10 hover:scale-102" onclick="exploreSeriesEpisodes('${server}', '${mac}', '${item.id}', '${item.name.replace(/'/g, "\\'")}')">
+                                ${img}
+                                <span class="text-[10px] font-bold text-slate-300 break-words leading-tight">${item.name}</span>
+                            </div>`;
+                    } else {
+                        // Channels and VOD play directly
+                        htmlContent += `
+                            <div id="stream-${item.id}" class="stream-card bg-black/50 border border-slate-800 rounded-xl p-3 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[100px] hover:border-sky-500 hover:bg-sky-500/10 hover:scale-102" onclick="streamPlay('${server}', '${mac}', '${item.id}', '${fetchType}', '${item.name.replace(/'/g, "\\'")}', 'stream-${item.id}')">
+                                ${img}
+                                <span class="text-[10px] font-bold text-slate-300 break-words leading-tight">${item.name}</span>
+                            </div>`;
+                    }
+                });
+                grid.innerHTML = htmlContent;
+            } else {
+                grid.innerHTML = '<span class="text-slate-400 text-xs col-span-full text-center">No media items returned for selected categories.</span>';
+            }
+        } catch (e) {
+            grid.innerHTML = '<span class="text-red-400 text-xs col-span-full text-center">Error fetching category index items.</span>';
+        }
+    };
+
+    // Explore seasons & episodes of a TV Show (For Series)
+    window.exploreSeriesEpisodes = async (server, mac, seriesId, seriesName) => {
+        const epPanel = document.getElementById('episodePanel');
+        const epList = document.getElementById('episodeList');
+        
+        document.getElementById('episodePanelTitle').innerText = `${seriesName} - Episodes`;
+        epPanel.classList.remove('hidden');
+        epList.innerHTML = '<span class="text-yellow-500 text-[10px]">Fetching episodes...</span>';
+
+        try {
+            const res = await fetch(`${CONFIG[activeEngine]}/api/get_episodes`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ server, mac, seriesId })
+            });
+            const result = await res.json();
+
+            if (result.success && result.data.length > 0) {
+                let html = '';
+                result.data.forEach((ep, idx) => {
+                    html += `
+                        <div id="ep-${ep.id}" class="ep-row flex items-center justify-between bg-white/5 hover:bg-yellow-500/15 border border-transparent rounded-lg p-2 text-xs font-bold transition cursor-pointer" onclick="streamPlay('${server}', '${mac}', '${ep.id}', 'vod', '${ep.name.replace(/'/g, "\\'")}', 'ep-${ep.id}')">
+                            <span class="text-slate-300 leading-tight">${idx + 1}. ${ep.name}</span>
+                            <span class="text-[10px] text-yellow-500 uppercase tracking-widest font-black">Play</span>
+                        </div>`;
+                });
+                epList.innerHTML = html;
+            } else {
+                epList.innerHTML = '<span class="text-slate-400 text-[11px]">No episodes found for this show.</span>';
+            }
+        } catch (e) {
+            epList.innerHTML = '<span class="text-red-400 text-[11px]">Failed connecting to episodes directory.</span>';
+        }
+    };
+
+    window.closeEpisodePanel = () => {
+        document.getElementById('episodePanel').classList.add('hidden');
+        document.getElementById('episodeList').innerHTML = '';
+    };
+
+    function getFormSelections() {
+        const fetchCheckedValues = (name) => {
+            return Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(el => el.value);
+        };
+
+        const l = fetchCheckedValues('cat_live');
+        const v = fetchCheckedValues('cat_vod');
+        const s = fetchCheckedValues('cat_series');
+
+        if (l.length === 0 && v.length === 0 && s.length === 0) {
+            pushLog(langDict[currentLanguage].noSelection, 'warn');
             return null;
         }
+
+        const server = document.getElementById('txtPortal').value.trim().replace(/\/c\/?$/i, '').replace(/\/$/i, '');
+        const mac = document.getElementById('txtMac').value.trim();
+
         return { server, mac, selections: { l, v, s } };
     }
 
+    // Convert Account Button
     document.getElementById('btnConvert').addEventListener('click', async () => {
-        const payload = getSelections();
+        const payload = getFormSelections();
         if (!payload) return;
-        pushLog('Generating credentials...', 'info');
+
+        pushLog("Sending authorization requests to credential generator gateway...", "info");
         try {
-            const resp = await fetch(`${CONFIG[activeEngine]}/create_account`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mac: payload.mac })
+            const res = await fetch(`${CONFIG[activeEngine]}/create_account`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ mac: payload.mac, server: payload.server, selections: payload.selections })
             });
-            const data = await resp.json();
+            const data = await res.json();
+
             if (data.success) {
-                pushLog('================ CREDENTIALS ================', 'success');
-                pushLog(`Host: ${CONFIG[activeEngine]}`, 'success');
-                pushLog(`User: ${payload.mac}`, 'success');
-                pushLog(`Pass: ${data.password}`, 'success');
-                pushLog('===============================================', 'success');
-                pushLog(lang[currentLanguage].ready, 'info');
-            } else throw new Error(data.error);
+                pushLog("================ CONVERT SUCCESS ================", "success");
+                pushLog(`IPTV HOSTNAME: ${CONFIG[activeEngine].replace("https://", "http://")}`, "success");
+                pushLog(`USERNAME: ${payload.mac}`, "success");
+                pushLog(`PASSWORD: ${data.password}`, "success");
+                pushLog("=================================================", "success");
+                pushLog(langDict[currentLanguage].ready, "info");
+            } else {
+                throw new Error(data.error);
+            }
         } catch (e) {
-            pushLog('Convert error: ' + e.message, 'error');
+            pushLog(`Execution error during credential mapping: ${e.message}`, "error");
         }
     });
 
+    // M3U Playlist Export Logic
     document.getElementById('btnDownloadM3u').addEventListener('click', async () => {
-        const payload = getSelections();
+        const payload = getFormSelections();
         if (!payload) return;
-        pushLog('Generating M3U playlist...', 'info');
+
+        pushLog("Generating dynamic M3U configuration file...", "info");
         try {
-            // First get password (same as convert)
-            const resp = await fetch(`${CONFIG[activeEngine]}/create_account`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mac: payload.mac })
+            const res = await fetch(`${CONFIG[activeEngine]}/create_account`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ mac: payload.mac, server: payload.server, selections: payload.selections })
             });
-            const data = await resp.json();
-            if (!data.success) throw new Error('Failed to get password');
-            const encodeSafe = (str) => btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-            const raw = JSON.stringify({ mac: payload.mac, server: payload.server, selections: payload.selections });
-            const encoded = encodeSafe(raw);
-            const dlUrl = `${CONFIG[activeEngine]}/get.php?username=${payload.mac}&password=${data.password}&type=m3u_plus&data=${encoded}`;
-            window.open(dlUrl, '_blank');
-            pushLog('M3U download triggered.', 'success');
-        } catch (e) {
-            pushLog('M3U error: ' + e.message, 'error');
-        }
-    });
+            const data = await res.json();
 
-    // Preview Modal
-    document.getElementById('btnPreview').addEventListener('click', async () => {
-        const payload = getSelections();
-        if (!payload) return;
-        const modal = document.getElementById('previewModal');
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-        document.getElementById('modalLiveList').innerHTML = '<span class="text-slate-400 text-xs">Loading...</span>';
-        document.getElementById('modalVodList').innerHTML = '<span class="text-slate-400 text-xs">Loading...</span>';
-        document.getElementById('modalSeriesList').innerHTML = '<span class="text-slate-400 text-xs">Loading...</span>';
-        document.getElementById('episodesContainer').classList.add('hidden');
+            if (data.success) {
+                const encodeSafeBase64 = (str) => btoa(unescape(encodeURIComponent(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+                const rawData = JSON.stringify({ mac: payload.mac, server: payload.server, selections: payload.selections });
+                const encoded = encodeSafeBase64(rawData);
 
-        // Fetch items for each type
-        if (payload.selections.l.length) {
-            fetchContent('itv', payload.selections.l, payload, 'modalLiveList');
-        } else {
-            document.getElementById('modalLiveList').innerHTML = '<span class="text-slate-400 text-xs">No live categories selected.</span>';
-        }
-        if (payload.selections.v.length) {
-            fetchContent('vod', payload.selections.v, payload, 'modalVodList');
-        } else {
-            document.getElementById('modalVodList').innerHTML = '<span class="text-slate-400 text-xs">No VOD categories selected.</span>';
-        }
-        if (payload.selections.s.length) {
-            fetchContent('series', payload.selections.s, payload, 'modalSeriesList');
-        } else {
-            document.getElementById('modalSeriesList').innerHTML = '<span class="text-slate-400 text-xs">No series categories selected.</span>';
-        }
-    });
-
-    async function fetchContent(type, categories, payload, targetId) {
-        try {
-            const resp = await fetch(`${CONFIG[activeEngine]}/api/get_items`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ server: payload.server, mac: payload.mac, type, selectedCats: categories })
-            });
-            const result = await resp.json();
-            const container = document.getElementById(targetId);
-            if (result.success && result.data.length) {
-                container.innerHTML = result.data.map(item => `
-                    <div class="stream-card bg-black/30 rounded-xl p-3 text-center cursor-pointer flex flex-col items-center justify-center min-h-[110px]"
-                         onclick="onItemClick('${payload.server}', '${payload.mac}', '${item.id}', '${type}', '${item.name.replace(/'/g, "\\'")}', this)">
-                        ${item.logo ? `<img src="${item.logo}" class="max-w-[50px] max-h-[50px] mb-2 object-contain rounded" onerror="this.style.display='none'">` : ''}
-                        <span class="text-xs font-semibold text-slate-300 break-words">${item.name}</span>
-                    </div>
-                `).join('');
+                const dlUrl = `${CONFIG[activeEngine]}/get.php?username=${payload.mac}&password=${data.password}&type=m3u_plus&data=${encoded}`;
+                window.open(dlUrl, '_blank');
+                pushLog("M3U playlist with paginated episode files generated successfully.", "success");
             } else {
-                container.innerHTML = '<span class="text-slate-400 text-xs">No items found.</span>';
+                throw new Error(data.error);
             }
         } catch (e) {
-            document.getElementById(targetId).innerHTML = '<span class="text-slate-400 text-xs">Error loading items.</span>';
+            pushLog(`Dynamic file compile failure: ${e.message}`, "error");
         }
-    }
-
-    // Click handler for items (live, vod, series)
-    window.onItemClick = function(server, mac, id, type, name, element) {
-        // For series, we fetch episodes instead of playing
-        if (type === 'series') {
-            loadEpisodes(server, mac, id, name);
-            // highlight selected series card
-            document.querySelectorAll('#modalSeriesList .stream-card').forEach(el => el.classList.remove('selected'));
-            element.classList.add('selected');
-            return;
-        }
-        // For live/vod, play directly
-        playStream(server, mac, id, type, name);
-        // highlight
-        document.querySelectorAll(`#modalLiveList .stream-card, #modalVodList .stream-card`).forEach(el => el.classList.remove('selected'));
-        element.classList.add('selected');
-    };
-
-    async function loadEpisodes(server, mac, seriesId, seriesName) {
-        pushLog(`Loading episodes for: ${seriesName}`, 'info');
-        try {
-            const resp = await fetch(`${CONFIG[activeEngine]}/api/get_episodes?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&series_id=${seriesId}`);
-            const data = await resp.json();
-            const container = document.getElementById('episodesList');
-            const episodesContainer = document.getElementById('episodesContainer');
-            if (data.success && data.data.length) {
-                container.innerHTML = data.data.map(ep => {
-                    const epName = ep.name || ep.title || `Episode ${ep.id}`;
-                    return `
-                        <div class="stream-card bg-black/30 rounded-xl p-3 text-center cursor-pointer flex flex-col items-center justify-center min-h-[90px]"
-                             onclick="playStream('${server}', '${mac}', '${ep.id}', 'series', '${epName.replace(/'/g, "\\'")}')">
-                            ${ep.logo ? `<img src="${ep.logo}" class="max-w-[40px] max-h-[40px] mb-2 object-contain rounded" onerror="this.style.display='none'">` : ''}
-                            <span class="text-xs font-semibold text-slate-300 break-words">${epName}</span>
-                        </div>
-                    `;
-                }).join('');
-                document.getElementById('currentSeriesTitle').textContent = seriesName;
-                episodesContainer.classList.remove('hidden');
-            } else {
-                container.innerHTML = '<span class="text-slate-400 text-xs">No episodes found for this series.</span>';
-                episodesContainer.classList.remove('hidden');
-            }
-        } catch (e) {
-            pushLog('Failed to load episodes: ' + e.message, 'error');
-        }
-    }
-
-    document.getElementById('btnBackToSeries').addEventListener('click', () => {
-        document.getElementById('episodesContainer').classList.add('hidden');
-        document.querySelectorAll('#modalSeriesList .stream-card').forEach(el => el.classList.remove('selected'));
-        // Also clear video
-        stopAndCleanupPlayers();
-        document.getElementById('previewTitle').textContent = 'Select content to load playback...';
-        document.getElementById('streamActions').classList.add('hidden');
-        document.getElementById('mixedContentWarning').classList.add('hidden');
     });
 
-    // Playback function
-    function playStream(server, mac, streamId, type, name) {
-        document.getElementById('previewTitle').textContent = name;
-        const proxyUrl = `${CONFIG[activeEngine]}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${streamId}&type=${type}`;
-        const video = document.getElementById('videoPlayer');
+    // Interactive Media Player Setup (Direct redirect fallback logic)
+    let mpegtsPlayer = null;
+    let hlsPlayer = null;
+
+    window.streamPlay = function(server, mac, streamId, type, label, cardElementId) {
+        document.getElementById('previewTitle').innerText = label;
+        const proxyStream = `${CONFIG[activeEngine]}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${streamId}&type=${type}`;
+        const videoElement = document.getElementById('videoPlayer');
+
+        // Reveal Quick Action controls & browser warning on stream click
         document.getElementById('streamActions').classList.remove('hidden');
         document.getElementById('mixedContentWarning').classList.remove('hidden');
-        document.getElementById('btnCopyStreamUrl').onclick = () => {
-            navigator.clipboard.writeText(proxyUrl).then(() => pushLog('Stream URL copied!', 'success'));
-        };
-        document.getElementById('btnExternalVlc').href = proxyUrl;
 
+        document.getElementById('btnCopyStreamUrl').onclick = function() {
+            navigator.clipboard.writeText(proxyStream).then(() => {
+                pushLog("Copied proxy stream URL to clipboard!", "success");
+            });
+        };
+        document.getElementById('btnExternalVlc').href = proxyStream;
+
+        // Dynamic Active Card Highlight
+        document.querySelectorAll('.stream-card, .ep-row').forEach(el => {
+            el.classList.remove('border-yellow-500', 'bg-yellow-500/15', 'ring-2', 'ring-yellow-500/30', 'ring-yellow-500/40');
+            if (el.classList.contains('stream-card')) {
+                el.classList.add('border-slate-800', 'bg-black/50');
+            } else {
+                el.classList.remove('bg-yellow-500/15');
+                el.classList.add('bg-white/5');
+            }
+        });
+        const activeCard = document.getElementById(cardElementId);
+        if (activeCard) {
+            if (activeCard.classList.contains('stream-card')) {
+                activeCard.classList.remove('border-slate-800', 'bg-black/50');
+                activeCard.classList.add('border-yellow-500', 'bg-yellow-500/15', 'ring-2', 'ring-yellow-500/30');
+            } else {
+                activeCard.classList.remove('bg-white/5');
+                activeCard.classList.add('bg-yellow-500/15', 'ring-2', 'ring-yellow-500/40');
+            }
+        }
+
+        pushLog(`Initiating playback verification for stream: ${label}`, "success");
         stopAndCleanupPlayers();
 
-        // Try mpegts.js for TS streams
+        // Tier 1 Playback: Try raw Transport Streams via mpegts.js parser
         try {
-            if (typeof mpegts !== 'undefined' && mpegts.isSupported()) {
-                const player = mpegts.createPlayer({
-                    type: type === 'itv' ? 'm2ts' : 'mp4',
+            if (mpegts.getFeatureList().mseLivePlayback) {
+                mpegtsPlayer = mpegts.createPlayer({
+                    type: type === 'vod' ? 'mp4' : 'm2ts',
                     isLive: type === 'itv',
-                    url: proxyUrl
+                    url: proxyStream
                 });
-                player.attachMediaElement(video);
-                player.load();
-                player.on(mpegts.Events.ERROR, () => {
-                    player.destroy();
-                    playFallbackHLS(proxyUrl, video);
-                });
-                player.play().catch(() => {
-                    player.destroy();
-                    playFallbackHLS(proxyUrl, video);
-                });
-                window.__mpegtsPlayer = player;
-                return;
-            }
-        } catch (e) {}
-        playFallbackHLS(proxyUrl, video);
-    }
+                mpegtsPlayer.attachMediaElement(videoElement);
+                mpegtsPlayer.load();
 
-    function playFallbackHLS(url, video) {
+                // Setup raw TS fallback trigger on load failure
+                mpegtsPlayer.on(mpegts.Events.ERROR, () => {
+                    pushLog(`Transport stream error detected. Falling back to HLS parser...`, "warn");
+                    stopAndCleanupPlayers();
+                    playFallbackHLS(proxyStream, videoElement);
+                });
+
+                mpegtsPlayer.play().catch(() => {
+                    stopAndCleanupPlayers();
+                    playFallbackHLS(proxyStream, videoElement);
+                });
+            } else {
+                playFallbackHLS(proxyStream, videoElement);
+            }
+        } catch (e) {
+            playFallbackHLS(proxyStream, videoElement);
+        }
+    };
+
+    // Tier 2 Playback: Fallback to HLS compilation via hls.js
+    function playFallbackHLS(url, videoElement) {
+        pushLog("Analyzing stream parameters via HLS manifest mapping...", "info");
         if (Hls.isSupported()) {
-            const hls = new Hls({ enableWorker: true, lowLatencyMode: true });
-            hls.loadSource(url);
-            hls.attachMedia(video);
-            hls.on(Hls.Events.ERROR, (ev, data) => {
+            hlsPlayer = new Hls({
+                enableWorker: true,
+                lowLatencyMode: true
+            });
+            hlsPlayer.loadSource(url);
+            hlsPlayer.attachMedia(videoElement);
+            
+            hlsPlayer.on(Hls.Events.ERROR, function (event, data) {
                 if (data.fatal) {
-                    hls.destroy();
-                    video.src = url;
-                    video.play().catch(() => {});
+                    pushLog("HLS decode failed. Reverting to direct browser native media pipeline...", "warn");
+                    hlsPlayer.destroy();
+                    hlsPlayer = null;
+                    playNativeFallback(url, videoElement);
                 }
             });
-            hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
-            window.__hlsPlayer = hls;
+            
+            hlsPlayer.on(Hls.Events.MANIFEST_PARSED, () => videoElement.play());
         } else {
-            video.src = url;
-            video.play().catch(() => {});
+            playNativeFallback(url, videoElement);
         }
+    }
+
+    // Tier 3 Playback: Fallback to direct HTML5 browser decoding engine
+    function playNativeFallback(url, videoElement) {
+        pushLog("Mounting direct HTML5 hardware video decoder pipeline...", "info");
+        videoElement.src = url;
+        videoElement.play().catch(() => {
+            pushLog("Playback failed across all local engine decoders. Verify browser mixed-content permissions.", "error");
+        });
     }
 
     function stopAndCleanupPlayers() {
-        const video = document.getElementById('videoPlayer');
-        if (window.__mpegtsPlayer) {
-            window.__mpegtsPlayer.pause();
-            window.__mpegtsPlayer.unload();
-            window.__mpegtsPlayer.detachMediaElement();
-            window.__mpegtsPlayer.destroy();
-            window.__mpegtsPlayer = null;
+        const videoElement = document.getElementById('videoPlayer');
+        if (mpegtsPlayer) {
+            mpegtsPlayer.pause();
+            mpegtsPlayer.unload();
+            mpegtsPlayer.detachMediaElement();
+            mpegtsPlayer.destroy();
+            mpegtsPlayer = null;
         }
-        if (window.__hlsPlayer) {
-            window.__hlsPlayer.destroy();
-            window.__hlsPlayer = null;
+        if (hlsPlayer) {
+            hlsPlayer.destroy();
+            hlsPlayer = null;
         }
-        video.pause();
-        video.removeAttribute('src');
-        video.load();
+        videoElement.pause();
+        videoElement.removeAttribute('src');
+        videoElement.load();
     }
 
-    document.getElementById('btnClosePreview').addEventListener('click', () => {
-        document.getElementById('previewModal').classList.add('hidden');
-        document.getElementById('previewModal').classList.remove('flex');
-        stopAndCleanupPlayers();
-        document.getElementById('streamActions').classList.add('hidden');
-        document.getElementById('mixedContentWarning').classList.add('hidden');
-        document.getElementById('episodesContainer').classList.add('hidden');
-        document.getElementById('previewTitle').textContent = 'Select content to load playback...';
-    });
+    // Helper Functions
+    window.copyValue = function(elementId) {
+        const element = document.getElementById(elementId);
+        if (!element.value) return;
+        navigator.clipboard.writeText(element.value).then(() => {
+            pushLog(`Copied to Clipboard: ${element.value}`, "success");
+        });
+    };
 
     function enableOptionalControls() {
-        ['btnConvert', 'btnDownloadM3u', 'btnPreview'].forEach(id => {
-            document.getElementById(id).disabled = false;
-            document.getElementById(id).classList.remove('opacity-50', 'cursor-not-allowed');
+        ['btnConvert', 'btnDownloadM3u'].forEach(id => {
+            const btn = document.getElementById(id);
+            btn.disabled = false;
         });
     }
 
     function disableOptionalControls() {
-        ['btnConvert', 'btnDownloadM3u', 'btnPreview'].forEach(id => {
-            document.getElementById(id).disabled = true;
-            document.getElementById(id).classList.add('opacity-50', 'cursor-not-allowed');
+        ['btnConvert', 'btnDownloadM3u'].forEach(id => {
+            const btn = document.getElementById(id);
+            btn.disabled = true;
         });
     }
-
-    window.copyValue = function(id) {
-        const el = document.getElementById(id);
-        if (el.value) {
-            navigator.clipboard.writeText(el.value).then(() => pushLog(`Copied: ${el.value}`, 'success'));
-        }
-    };
 </script>
 </body>
 </html>
