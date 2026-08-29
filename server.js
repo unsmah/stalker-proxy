@@ -78,6 +78,48 @@ function parseStalkerList(data) {
   return [];
 }
 
+// Unified Pagination Fetcher: Compiles all pages for a category concurrently
+async function getCategoryItems(server, mac, type, catId, clientIp) {
+  const paramKey = type === 'itv' ? 'genre' : 'category';
+  let allData = [];
+
+  try {
+    // 1. Fetch Page 1 to inspect total counts
+    const firstPage = await callStalker(server, mac, type, 'get_ordered_list', { [paramKey]: catId, p: 1 }, clientIp).catch(() => null);
+    if (!firstPage) return [];
+
+    const jsData = firstPage.js || {};
+    const firstPageItems = parseStalkerList(firstPage);
+    allData = [...firstPageItems];
+
+    const totalItems = parseInt(jsData.total_items || 0, 10);
+    const maxPageItems = parseInt(jsData.max_page_items || firstPageItems.length || 0, 10);
+
+    // 2. Fetch remaining pages if more exist
+    if (totalItems > maxPageItems && maxPageItems > 0) {
+      const totalPages = Math.ceil(totalItems / maxPageItems);
+      const pagePromises = [];
+
+      for (let page = 2; page <= totalPages; page++) {
+        pagePromises.push(
+          callStalker(server, mac, type, 'get_ordered_list', { [paramKey]: catId, p: page }, clientIp)
+            .then(res => parseStalkerList(res))
+            .catch(() => [])
+        );
+      }
+
+      const pagesResults = await Promise.all(pagePromises);
+      pagesResults.forEach(pageItems => {
+        allData = [...allData, ...pageItems];
+      });
+    }
+  } catch (e) {
+    console.error(`Pagination compilation error on category ${catId}:`, e.message);
+  }
+
+  return allData;
+}
+
 async function resolveStreamLink(server, mac, streamId, type, clientIp) {
   let resolvedUrl = '';
   
@@ -140,22 +182,18 @@ app.post('/create_account', (req, res) => {
   res.json({ success: true, password });
 });
 
-// 3. Get Items
+// 3. Get Items (Paginated)
 app.post('/api/get_items', async (req, res) => {
   const { server, mac, type, selectedCats } = req.body;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
 
   try {
-    const promises = selectedCats.map(catId => {
-      const paramKey = type === 'itv' ? 'genre' : 'category';
-      return callStalker(server, mac, type, 'get_ordered_list', { [paramKey]: catId }, clientIp).catch(() => null);
-    });
-
+    const promises = selectedCats.map(catId => getCategoryItems(server, mac, type, catId, clientIp));
     const results = await Promise.all(promises);
     let allItems = [];
 
-    results.forEach(res => {
-      parseStalkerList(res).forEach(item => {
+    results.forEach(items => {
+      items.forEach(item => {
         allItems.push({
           id: item.id || "",
           name: item.name || item.title || "",
@@ -170,48 +208,22 @@ app.post('/api/get_items', async (req, res) => {
   }
 });
 
-// 4. Proxy Stream (Pipes HTTP streams securely to bypass browser Blocks)
+// 4. Proxy Stream (Redirects client)
 app.get('/proxy_stream', async (req, res) => {
-  const { server, mac, stream_id, type, mode } = req.query;
+  const { server, mac, stream_id, type } = req.query;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
 
   try {
     const resolvedUrl = await resolveStreamLink(server, mac, stream_id, type, clientIp);
     if (!resolvedUrl) return res.status(404).send('Unable to resolve stream');
 
-    // M3U Playlist Mode: Perform direct 302 Redirect
-    if (mode !== 'proxy') {
-      return res.redirect(302, resolvedUrl);
-    }
-
-    // Web Player Mode: Pipe raw HTTP connection data over the secure Express HTTPS bridge
-    const mediaStream = await axios({
-      method: 'get',
-      url: resolvedUrl,
-      responseType: 'stream',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3',
-        'X-Forwarded-For': clientIp,
-        'X-Real-IP': clientIp
-      }
-    });
-
-    const keepHeaders = ['content-type', 'content-length', 'accept-ranges', 'content-range', 'content-disposition', 'cache-control'];
-    keepHeaders.forEach(header => {
-      if (mediaStream.headers[header]) {
-        res.setHeader(header, mediaStream.headers[header]);
-      }
-    });
-
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    mediaStream.data.pipe(res);
-
+    res.redirect(302, resolvedUrl);
   } catch (err) {
-    res.status(500).send('Streaming pipe failed: ' + err.message);
+    res.status(500).send('Streaming redirection failed: ' + err.message);
   }
 });
 
-// 5. Get M3U
+// 5. Get M3U (Paginated across all selections)
 app.get('/get.php', async (req, res) => {
   const { data } = req.query;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
@@ -225,10 +237,25 @@ app.get('/get.php', async (req, res) => {
 
     // Process Live Channels
     if (selections.l && selections.l.length > 0) {
-      const liveItems = await callStalker(server, mac, 'itv', 'get_ordered_list', { genre: selections.l[0] }, clientIp);
-      parseStalkerList(liveItems).forEach(ch => {
-        m3uLines.push(`#EXTINF:-1 tvg-id="${ch.id}" tvg-name="${ch.name}" tvg-logo="${ch.logo}" group-title="Live Channels",${ch.name}`);
-        m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${ch.id}&type=itv`);
+      const promises = selections.l.map(catId => getCategoryItems(server, mac, 'itv', catId, clientIp));
+      const results = await Promise.all(promises);
+      results.forEach(channels => {
+        channels.forEach(ch => {
+          m3uLines.push(`#EXTINF:-1 tvg-id="${ch.id}" tvg-name="${ch.name}" tvg-logo="${ch.logo || ''}" group-title="Live Channels",${ch.name}`);
+          m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${ch.id}&type=itv`);
+        });
+      });
+    }
+
+    // Process VOD (Movies)
+    if (selections.v && selections.v.length > 0) {
+      const promises = selections.v.map(catId => getCategoryItems(server, mac, 'vod', catId, clientIp));
+      const results = await Promise.all(promises);
+      results.forEach(movies => {
+        movies.forEach(mv => {
+          m3uLines.push(`#EXTINF:-1 tvg-id="${mv.id}" tvg-name="${mv.name}" tvg-logo="${mv.logo || ''}" group-title="VOD Movies",${mv.name}`);
+          m3uLines.push(`${origin}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${mv.id}&type=vod`);
+        });
       });
     }
 
