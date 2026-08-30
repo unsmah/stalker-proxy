@@ -78,12 +78,24 @@ function parseStalkerList(data) {
   return [];
 }
 
-// Compiles and flattens all pages of items (including nested series episodes)
+// Unified Pagination Fetcher: Custom routes for ITV, VOD and Series
 async function getCategoryItems(server, mac, type, catId, clientIp) {
   let allData = [];
 
   try {
-    // Specialized Series Episode Flattening logic
+    // 1. Live TV (ITV) - Unpaginated and clean (does not send 'p' parameter)
+    if (type === 'itv') {
+      const liveData = await callStalker(server, mac, 'itv', 'get_ordered_list', { genre: catId }, clientIp).catch(() => null);
+      const liveItems = parseStalkerList(liveData);
+      return liveItems.map(item => ({
+        id: item.id || "",
+        name: item.name || item.title || "",
+        logo: item.logo || item.tv_genre_logo || "",
+        cmd: item.cmd || ""
+      }));
+    }
+
+    // 2. TV Series Categories - Flat lists of episodes compiled concurrently
     if (type === 'series') {
       const firstPage = await callStalker(server, mac, 'series', 'get_ordered_list', { category: catId, p: 1 }, clientIp).catch(() => null);
       if (!firstPage) return [];
@@ -137,8 +149,8 @@ async function getCategoryItems(server, mac, type, catId, clientIp) {
       return allData;
     }
 
-    // Default ITV & VOD Category Fetching
-    const paramKey = type === 'itv' ? 'genre' : 'category';
+    // 3. VOD (Movies) Categories - Paginated
+    const paramKey = 'category';
     const firstPage = await callStalker(server, mac, type, 'get_ordered_list', { [paramKey]: catId, p: 1 }, clientIp).catch(() => null);
     if (!firstPage) return [];
 
@@ -186,11 +198,12 @@ async function getCategoryItems(server, mac, type, catId, clientIp) {
   return allData;
 }
 
-// Resolves actual streaming command using native command formats first
+// Resolves actual streaming command safely sanitizing invalid empty strings
 async function resolveStreamLink(server, mac, streamId, type, clientIp, passedCmd = '') {
   let resolvedUrl = '';
   
-  let cmd = passedCmd ? decodeURIComponent(passedCmd) : '';
+  // Defensive sanitization of incoming text commands
+  let cmd = (passedCmd && passedCmd !== 'undefined' && passedCmd !== 'null') ? decodeURIComponent(passedCmd) : '';
   
   if (cmd) {
     let resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
@@ -252,7 +265,7 @@ app.post('/create_account', (req, res) => {
   res.json({ success: true, password });
 });
 
-// 3. Get Items (Paginated and cmd-preserved)
+// 3. Get Items (Using custom category routes)
 app.post('/api/get_items', async (req, res) => {
   const { server, mac, type, selectedCats } = req.body;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
@@ -294,7 +307,7 @@ app.get('/proxy_stream', async (req, res) => {
   }
 });
 
-// 5. Get M3U (Dynamic M3U compiler incorporating flattened series episodes)
+// 5. Get M3U (Paginated across all selections)
 app.get('/get.php', async (req, res) => {
   const { data } = req.query;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
