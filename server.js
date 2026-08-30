@@ -10,17 +10,6 @@ app.use(express.json());
 
 // --- Helper Functions ---
 
-// Safely parses JSON data even if the Stalker portal serves it as plain text or javascript
-function safeParseJSON(data) {
-  if (!data) return null;
-  if (typeof data === 'object') return data;
-  try {
-    return JSON.parse(data);
-  } catch (e) {
-    return null;
-  }
-}
-
 async function getSessionToken(server, mac, clientIp = '') {
   try {
     const cleanServer = server.replace(/\/c\/?$/i, '').replace(/\/$/i, '');
@@ -39,8 +28,7 @@ async function getSessionToken(server, mac, clientIp = '') {
     }
 
     const hsResponse = await axios.get(handshakeUrl, { headers, timeout: 5000 });
-    const hsData = safeParseJSON(hsResponse.data);
-    const token = hsData?.js?.token || hsData?.js || null;
+    const token = hsResponse.data?.js?.token || hsResponse.data?.js || null;
     if (!token) return null;
 
     const profileUrl = `${cleanServer}/portal.php?type=stb&action=get_profile`;
@@ -78,7 +66,7 @@ async function callStalker(server, mac, type, action, params = {}, clientIp = ''
   }
 
   const response = await axios.get(targetUrl, { headers, timeout: 8000 });
-  return safeParseJSON(response.data);
+  return response.data;
 }
 
 function parseStalkerList(data) {
@@ -90,12 +78,12 @@ function parseStalkerList(data) {
   return [];
 }
 
-// Adaptive Page Fetcher: Safely compiles 100% of channels on both flat and paginated portals
+// Compiles and flattens all pages of items (including nested series episodes)
 async function getCategoryItems(server, mac, type, catId, clientIp) {
   let allData = [];
 
   try {
-    // 1. TV Series - Specialized Episode Resolver
+    // Specialized Series Episode Flattening logic
     if (type === 'series') {
       const firstPage = await callStalker(server, mac, 'series', 'get_ordered_list', { category: catId, p: 1 }, clientIp).catch(() => null);
       if (!firstPage) return [];
@@ -149,26 +137,23 @@ async function getCategoryItems(server, mac, type, catId, clientIp) {
       return allData;
     }
 
-    // 2. Standard ITV & VOD Category Fetching
+    // Default ITV & VOD Category Fetching
     const paramKey = type === 'itv' ? 'genre' : 'category';
-    
-    // Fetch default list without "p" parameter to ensure compatibility with all portals
-    const defaultPage = await callStalker(server, mac, type, 'get_ordered_list', { [paramKey]: catId }, clientIp).catch(() => null);
-    if (!defaultPage) return [];
+    const firstPage = await callStalker(server, mac, type, 'get_ordered_list', { [paramKey]: catId, p: 1 }, clientIp).catch(() => null);
+    if (!firstPage) return [];
 
-    const jsData = defaultPage.js || {};
-    const defaultItems = parseStalkerList(defaultPage);
-    allData = defaultItems.map(item => ({
+    const jsData = firstPage.js || {};
+    const firstPageItems = parseStalkerList(firstPage);
+    allData = firstPageItems.map(item => ({
       id: item.id || "",
       name: item.name || item.title || "",
-      logo: item.logo || item.tv_genre_logo || "",
+      logo: item.logo || "",
       cmd: item.cmd || ""
     }));
 
     const totalItems = parseInt(jsData.total_items || 0, 10);
-    const maxPageItems = parseInt(jsData.max_page_items || defaultItems.length || 0, 10);
+    const maxPageItems = parseInt(jsData.max_page_items || firstPageItems.length || 0, 10);
 
-    // If portal paginates and more pages exist, fetch them concurrently
     if (totalItems > maxPageItems && maxPageItems > 0) {
       const totalPages = Math.ceil(totalItems / maxPageItems);
       const pagePromises = [];
@@ -180,7 +165,7 @@ async function getCategoryItems(server, mac, type, catId, clientIp) {
               return parseStalkerList(res).map(item => ({
                 id: item.id || "",
                 name: item.name || item.title || "",
-                logo: item.logo || item.tv_genre_logo || "",
+                logo: item.logo || "",
                 cmd: item.cmd || ""
               }));
             })
@@ -201,22 +186,17 @@ async function getCategoryItems(server, mac, type, catId, clientIp) {
   return allData;
 }
 
-// Resolves actual streaming command while protecting from session bans caused by garbage commands
+// Resolves actual streaming command using native command formats first
 async function resolveStreamLink(server, mac, streamId, type, clientIp, passedCmd = '') {
   let resolvedUrl = '';
   
-  // Clean and validate commands to prevent portal security blocks
-  let cmd = '';
-  if (passedCmd && passedCmd !== 'undefined' && passedCmd !== 'null' && passedCmd !== '') {
-    cmd = decodeURIComponent(passedCmd).trim();
-  }
+  let cmd = passedCmd ? decodeURIComponent(passedCmd) : '';
   
   if (cmd) {
     let resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
     resolvedUrl = resData?.js?.cmd || resData?.js || '';
   }
 
-  // Fallback to standard constructed commands
   if (!resolvedUrl) {
     cmd = type === 'itv' ? `ffmpeg http://localhost/ch/${streamId}` : `/media/${streamId}.mpg`;
     let resData = await callStalker(server, mac, type, 'create_link', { cmd }, clientIp).catch(() => null);
@@ -299,48 +279,22 @@ app.post('/api/get_items', async (req, res) => {
   }
 });
 
-// 4. Proxy Stream (Handles both HTTP redirect for M3U and live secure piping for browser previews)
+// 4. Proxy Stream (Redirects client, incorporating cmd parameter)
 app.get('/proxy_stream', async (req, res) => {
-  const { server, mac, stream_id, type, cmd, mode } = req.query;
+  const { server, mac, stream_id, type, cmd } = req.query;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
 
   try {
     const resolvedUrl = await resolveStreamLink(server, mac, stream_id, type, clientIp, cmd);
     if (!resolvedUrl) return res.status(404).send('Unable to resolve stream');
 
-    // M3U / External App mode: Perform standard redirect
-    if (mode !== 'proxy') {
-      return res.redirect(302, resolvedUrl);
-    }
-
-    // Web Player mode: Pipe raw media segments over secure Render HTTPS gateway
-    const mediaStream = await axios({
-      method: 'get',
-      url: resolvedUrl,
-      responseType: 'stream',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3',
-        'X-Forwarded-For': clientIp,
-        'X-Real-IP': clientIp
-      }
-    });
-
-    const keepHeaders = ['content-type', 'content-length', 'accept-ranges', 'content-range', 'content-disposition', 'cache-control'];
-    keepHeaders.forEach(header => {
-      if (mediaStream.headers[header]) {
-        res.setHeader(header, mediaStream.headers[header]);
-      }
-    });
-
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    mediaStream.data.pipe(res);
-
+    res.redirect(302, resolvedUrl);
   } catch (err) {
-    res.status(500).send('Streaming pipe failed: ' + err.message);
+    res.status(500).send('Streaming redirection failed: ' + err.message);
   }
 });
 
-// 5. Get M3U (Paginated across all selections)
+// 5. Get M3U (Dynamic M3U compiler incorporating flattened series episodes)
 app.get('/get.php', async (req, res) => {
   const { data } = req.query;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
