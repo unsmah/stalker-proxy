@@ -61,7 +61,7 @@
 
             <!-- MAC Address -->
             <div class="input-group flex flex-col gap-2 w-full">
-                <button class="btn-main text-white p-3 rounded-xl text-center shadow-lg transition duration-200 bg-gradient-to-r from-blue-600 to-blue-500 pointer-events-none opacity-90" disabled>
+                <button class="btn-main text-white py-3 px-4 rounded-xl text-center shadow-lg transition duration-200 bg-gradient-to-r from-blue-600 to-blue-500 pointer-events-none opacity-90" disabled>
                     <div class="btn-title text-sm font-black">MAC ADDRESS</div>
                     <div class="btn-desc text-[11px] font-semibold opacity-85 mt-1">Portal Authorized Device Identifier</div>
                 </button>
@@ -491,8 +491,8 @@
 
     window.streamPlay = function(server, mac, streamId, type, label, cardElementId, passedCmd = '') {
         document.getElementById('previewTitle').innerText = label;
-        // Restored &mode=proxy to trigger backend media piping over secure HTTPS
-        const proxyStream = `${CONFIG[activeEngine]}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${streamId}&type=${type}&cmd=${passedCmd}&mode=proxy`;
+        // Point to proxy_stream without mode=proxy to let Cloudflare safely Redirect 302
+        const proxyStream = `${CONFIG[activeEngine]}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${streamId}&type=${type}&cmd=${passedCmd}`;
         const videoElement = document.getElementById('videoPlayer');
 
         // Reveal Quick Action controls & browser warning on stream click
