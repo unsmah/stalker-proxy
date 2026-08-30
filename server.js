@@ -10,6 +10,17 @@ app.use(express.json());
 
 // --- Helper Functions ---
 
+// Safely parses JSON data even if the Stalker portal serves it as plain text or javascript
+function safeParseJSON(data) {
+  if (!data) return null;
+  if (typeof data === 'object') return data;
+  try {
+    return JSON.parse(data);
+  } catch (e) {
+    return null;
+  }
+}
+
 async function getSessionToken(server, mac, clientIp = '') {
   try {
     const cleanServer = server.replace(/\/c\/?$/i, '').replace(/\/$/i, '');
@@ -28,7 +39,8 @@ async function getSessionToken(server, mac, clientIp = '') {
     }
 
     const hsResponse = await axios.get(handshakeUrl, { headers, timeout: 5000 });
-    const token = hsResponse.data?.js?.token || hsResponse.data?.js || null;
+    const hsData = safeParseJSON(hsResponse.data);
+    const token = hsData?.js?.token || hsData?.js || null;
     if (!token) return null;
 
     const profileUrl = `${cleanServer}/portal.php?type=stb&action=get_profile`;
@@ -66,7 +78,7 @@ async function callStalker(server, mac, type, action, params = {}, clientIp = ''
   }
 
   const response = await axios.get(targetUrl, { headers, timeout: 8000 });
-  return response.data;
+  return safeParseJSON(response.data);
 }
 
 function parseStalkerList(data) {
@@ -78,7 +90,7 @@ function parseStalkerList(data) {
   return [];
 }
 
-// Adaptive Page Fetcher: Safely loads 100% of channels on both paginated and flat portals
+// Adaptive Page Fetcher: Safely compiles 100% of channels on both flat and paginated portals
 async function getCategoryItems(server, mac, type, catId, clientIp) {
   let allData = [];
 
