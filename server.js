@@ -299,18 +299,44 @@ app.post('/api/get_items', async (req, res) => {
   }
 });
 
-// 4. Proxy Stream (Redirects client)
+// 4. Proxy Stream (Handles both HTTP redirect for M3U and live secure piping for browser previews)
 app.get('/proxy_stream', async (req, res) => {
-  const { server, mac, stream_id, type, cmd } = req.query;
+  const { server, mac, stream_id, type, cmd, mode } = req.query;
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
 
   try {
     const resolvedUrl = await resolveStreamLink(server, mac, stream_id, type, clientIp, cmd);
     if (!resolvedUrl) return res.status(404).send('Unable to resolve stream');
 
-    res.redirect(302, resolvedUrl);
+    // M3U / External App mode: Perform standard redirect
+    if (mode !== 'proxy') {
+      return res.redirect(302, resolvedUrl);
+    }
+
+    // Web Player mode: Pipe raw media segments over secure Render HTTPS gateway
+    const mediaStream = await axios({
+      method: 'get',
+      url: resolvedUrl,
+      responseType: 'stream',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3',
+        'X-Forwarded-For': clientIp,
+        'X-Real-IP': clientIp
+      }
+    });
+
+    const keepHeaders = ['content-type', 'content-length', 'accept-ranges', 'content-range', 'content-disposition', 'cache-control'];
+    keepHeaders.forEach(header => {
+      if (mediaStream.headers[header]) {
+        res.setHeader(header, mediaStream.headers[header]);
+      }
+    });
+
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    mediaStream.data.pipe(res);
+
   } catch (err) {
-    res.status(500).send('Streaming redirection failed: ' + err.message);
+    res.status(500).send('Streaming pipe failed: ' + err.message);
   }
 });
 
