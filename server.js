@@ -78,60 +78,24 @@ function parseStalkerList(data) {
   return [];
 }
 
-// Unified Pagination Fetcher: Handles Live TV, VOD, and Series differently based on API capabilities
+// Unified Pagination Fetcher: Loads all items in one shot, with a deduplicating page loop fallback
 async function getCategoryItems(server, mac, type, catId, clientIp) {
   let allData = [];
 
   try {
-    // 1. Live TV (itv) - No pagination parameters (avoids database errors)
-    if (type === 'itv') {
-      const data = await callStalker(server, mac, 'itv', 'get_ordered_list', { genre: catId }, clientIp).catch(() => null);
-      if (!data) return [];
-      
-      return parseStalkerList(data).map(item => ({
-        id: item.id || "",
-        name: item.name || item.title || "",
-        logo: item.logo || item.tv_genre_logo || "",
-        cmd: "" // Live streams generate cmds dynamically via play token
-      }));
-    }
-
-    // 2. TV Series - Specialized Episode Resolver
+    // 1. TV Series Specialized Episode Resolver
     if (type === 'series') {
-      const firstPage = await callStalker(server, mac, 'series', 'get_ordered_list', { category: catId, p: 1 }, clientIp).catch(() => null);
+      const firstPage = await callStalker(server, mac, 'series', 'get_ordered_list', { category: catId, max_page_items: 1000 }, clientIp).catch(() => null);
       if (!firstPage) return [];
 
-      const jsData = firstPage.js || {};
       let shows = parseStalkerList(firstPage);
-
-      const totalItems = parseInt(jsData.total_items || 0, 10);
-      const maxPageItems = parseInt(jsData.max_page_items || shows.length || 0, 10);
-
-      // Compile remaining show pages
-      if (totalItems > maxPageItems && maxPageItems > 0) {
-        const totalPages = Math.ceil(totalItems / maxPageItems);
-        const pagePromises = [];
-
-        for (let page = 2; page <= totalPages; page++) {
-          pagePromises.push(
-            callStalker(server, mac, 'series', 'get_ordered_list', { category: catId, p: page }, clientIp)
-              .then(res => parseStalkerList(res))
-              .catch(() => [])
-          );
-        }
-
-        const pagesResults = await Promise.all(pagePromises);
-        pagesResults.forEach(pageItems => {
-          shows = [...shows, ...pageItems];
-        });
-      }
 
       // Fetch all episodes for each parent show concurrently
       const episodePromises = shows.map(async (show) => {
         const showId = show.id;
         const showName = show.name || show.title || "";
         
-        const episodesPage = await callStalker(server, mac, 'vod', 'get_ordered_list', { movie_id: showId }, clientIp).catch(() => null);
+        const episodesPage = await callStalker(server, mac, 'vod', 'get_ordered_list', { movie_id: showId, max_page_items: 1000 }, clientIp).catch(() => null);
         const episodes = parseStalkerList(episodesPage);
         
         return episodes.map(ep => ({
@@ -150,9 +114,11 @@ async function getCategoryItems(server, mac, type, catId, clientIp) {
       return allData;
     }
 
-    // 3. Video On Demand (VOD) - Multi-Page Concurrent Scans
-    const paramKey = 'category';
-    const firstPage = await callStalker(server, mac, type, 'get_ordered_list', { [paramKey]: catId, p: 1 }, clientIp).catch(() => null);
+    // 2. Live TV (itv) and VOD Categories Handling
+    const paramKey = type === 'itv' ? 'genre' : 'category';
+    
+    // Request with large max_page_items to load all in one shot
+    const firstPage = await callStalker(server, mac, type, 'get_ordered_list', { [paramKey]: catId, max_page_items: 1000 }, clientIp).catch(() => null);
     if (!firstPage) return [];
 
     const jsData = firstPage.js || {};
@@ -160,25 +126,27 @@ async function getCategoryItems(server, mac, type, catId, clientIp) {
     allData = firstPageItems.map(item => ({
       id: item.id || "",
       name: item.name || item.title || "",
-      logo: item.logo || "",
+      logo: item.logo || item.tv_genre_logo || "",
       cmd: item.cmd || ""
     }));
 
     const totalItems = parseInt(jsData.total_items || 0, 10);
-    const maxPageItems = parseInt(jsData.max_page_items || firstPageItems.length || 0, 10);
+    const maxPageItems = firstPageItems.length;
 
+    // Fallback: If there are still more items than loaded, perform page-by-page fetching
     if (totalItems > maxPageItems && maxPageItems > 0) {
-      const totalPages = Math.ceil(totalItems / maxPageItems);
+      const maxPageSize = parseInt(jsData.max_page_items || maxPageItems, 10);
+      const totalPages = Math.ceil(totalItems / maxPageSize);
       const pagePromises = [];
 
-      for (let page = 2; page <= totalPages; page++) {
+      for (let page = 1; page <= totalPages; page++) {
         pagePromises.push(
-          callStalker(server, mac, type, 'get_ordered_list', { [paramKey]: catId, p: page }, clientIp)
+          callStalker(server, mac, type, 'get_ordered_list', { [paramKey]: catId, p: page, max_page_items: maxPageSize }, clientIp)
             .then(res => {
               return parseStalkerList(res).map(item => ({
                 id: item.id || "",
                 name: item.name || item.title || "",
-                logo: item.logo || "",
+                logo: item.logo || item.tv_genre_logo || "",
                 cmd: item.cmd || ""
               }));
             })
@@ -188,18 +156,22 @@ async function getCategoryItems(server, mac, type, catId, clientIp) {
 
       const pagesResults = await Promise.all(pagePromises);
       pagesResults.forEach(pageItems => {
-        allData = [...allData, ...pageItems];
+        pageItems.forEach(newItem => {
+          // Prevent duplicate items
+          if (!allData.some(existing => existing.id === newItem.id)) {
+            allData.push(newItem);
+          }
+        });
       });
     }
 
   } catch (e) {
-    console.error(`Pagination compilation error on category ${catId}:`, e.message);
+    console.error(`Error compiling items on category ${catId}:`, e.message);
   }
 
   return allData;
 }
 
-// Resolves actual streaming command using native command formats first
 async function resolveStreamLink(server, mac, streamId, type, clientIp, passedCmd = '') {
   let resolvedUrl = '';
   
