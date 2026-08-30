@@ -491,8 +491,8 @@
 
     window.streamPlay = function(server, mac, streamId, type, label, cardElementId, passedCmd = '') {
         document.getElementById('previewTitle').innerText = label;
-        // Point to proxy_stream without mode=proxy to let Cloudflare safely Redirect 302
-        const proxyStream = `${CONFIG[activeEngine]}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${streamId}&type=${type}&cmd=${passedCmd}`;
+        // Appends &mode=proxy to force HTTPS secure media piping inside the browser preview player
+        const proxyStream = `${CONFIG[activeEngine]}/proxy_stream?server=${encodeURIComponent(server)}&mac=${encodeURIComponent(mac)}&stream_id=${streamId}&type=${type}&cmd=${passedCmd}&mode=proxy`;
         const videoElement = document.getElementById('videoPlayer');
 
         // Reveal Quick Action controls & browser warning on stream click
